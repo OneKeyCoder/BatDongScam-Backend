@@ -1,0 +1,36 @@
+package com.se100.bds.services.user;
+
+import com.se100.bds.dtos.requests.auth.RegisterRequest;
+import com.se100.bds.entities.user.User;
+import com.se100.bds.securities.JwtUserDetails;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.BindException;
+
+import java.util.UUID;
+
+public interface UserService {
+    User getUser();
+
+    UserDetails loadUserById(String id);
+
+    JwtUserDetails getPrincipal(Authentication authentication);
+
+    Page<User> findAll(Pageable pageable);
+
+    User findById(UUID id);
+
+    User updateStatus(UUID id, String status);
+
+    User findByEmail(String email);
+
+    UserDetails loadUserByEmail(String email);
+
+    User register(RegisterRequest request) throws BindException;
+
+    void delete(String id);
+
+    void activeteUser(String id);
+}
