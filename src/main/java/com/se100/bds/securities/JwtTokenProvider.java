@@ -2,7 +2,6 @@ package com.se100.bds.securities;
 
 import com.se100.bds.entities.user.User;
 import com.se100.bds.exceptions.NotFoundException;
-import com.se100.bds.services.auth.JwtTokenService;
 import com.se100.bds.services.user.UserService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -34,24 +33,16 @@ public class JwtTokenProvider {
     @Getter
     private Long refreshTokenExpiresIn;
 
-    private final JwtTokenService jwtTokenService;
-
-    private final HttpServletRequest httpServletRequest;
-
     public JwtTokenProvider(
             @Value("${app.secret}") final String appSecret,
             @Value("${app.jwt.token.expires-in}") final Long tokenExpiresIn,
             @Value("${app.jwt.refresh-token.expires-in}") final Long refreshTokenExpiresIn,
-            final UserService userService,
-            final JwtTokenService jwtTokenService,
-            final HttpServletRequest httpServletRequest
+            final UserService userService
     ) {
         this.userService = userService;
         this.appSecret = appSecret;
         this.tokenExpiresIn = tokenExpiresIn;
         this.refreshTokenExpiresIn = refreshTokenExpiresIn;
-        this.jwtTokenService = jwtTokenService;
-        this.httpServletRequest = httpServletRequest;
     }
 
     public String generateTokenByUserId(final String id, final Long expires) {
@@ -100,36 +91,28 @@ public class JwtTokenProvider {
 
     /**
      * Boolean result of whether token is valid or not.
+     * Stateless validation - only checks signature and expiration.
      *
      * @param token String token
      * @return boolean
      */
     public boolean validateToken(final String token) {
-        return validateToken(token, true);
-    }
-
-    public boolean validateToken(final String token, final boolean isHttp) {
         try {
-            // TODO: Check for the Refresh token also
-            // jwtTokenService.findByTokenOrRefreshToken(token, refreshToken);
-            jwtTokenService.findByTokenOrRefreshToken(token, token);
-
-        } catch (NotFoundException e) {
-            log.error("[JWT] Token could not found in Redis");
+            parseToken(token);
+            return true;
+        } catch (Exception e) {
+            log.error("[JWT] Token validation failed: {}", e.getMessage());
             return false;
         }
-
-        return !isTokenExpired(token);
     }
 
     public boolean validateToken(final String token, final HttpServletRequest httpServletRequest) {
         try {
-            boolean isTokenValid = validateToken(token);
-            if (!isTokenValid) {
-                log.error("[JWT] Token could not found in local cache");
-                httpServletRequest.setAttribute("notfound", "Token is not found in cache");
-            }
-            return isTokenValid;
+            parseToken(token);
+            return true;
+        } catch (io.jsonwebtoken.security.SecurityException e) {
+            log.error("[JWT] Invalid JWT signature!");
+            httpServletRequest.setAttribute("invalid", "Invalid JWT signature!");
         } catch (UnsupportedJwtException e) {
             log.error("[JWT] Unsupported JWT token!");
             httpServletRequest.setAttribute("unsupported", "Unsupported JWT token!");

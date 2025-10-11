@@ -1,6 +1,7 @@
 package com.se100.bds.securities;
 
 import com.se100.bds.services.user.UserService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,15 +37,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = jwtTokenProvider.extractJwtFromRequest(request);
 
-            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token, request)) {
-                String id = jwtTokenProvider.getUserIdFromToken(token);
-                UserDetails user = userService.loadUserById(id);
+            if (StringUtils.hasText(token)) {
+                // Try to validate the token
+                try {
+                    if (jwtTokenProvider.validateToken(token, request)) {
+                        String id = jwtTokenProvider.getUserIdFromToken(token);
+                        UserDetails user = userService.loadUserById(id);
 
-                if (Objects.nonNull(user)) {
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                        if (Objects.nonNull(user)) {
+                            UsernamePasswordAuthenticationToken auth =
+                                    new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                        }
+                    }
+                } catch (ExpiredJwtException e) {
+                    log.warn("Access token expired for request: {}", request.getRequestURI());
+                    // Mark the request as having an expired token
+                    request.setAttribute("expired", "Access token expired. Please use refresh token.");
                 }
             }
         } catch (Exception ex) {

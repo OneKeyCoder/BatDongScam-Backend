@@ -2,6 +2,7 @@ package com.se100.bds.exceptions;
 
 import com.se100.bds.dtos.responses.error.DetailedErrorResponse;
 import com.se100.bds.dtos.responses.error.ErrorResponse;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
@@ -97,6 +98,24 @@ public class AppExceptionHandler {
     public final ResponseEntity<ErrorResponse> handleBadCredentialsException(final Exception e) {
         log.error(e.toString(), e.getMessage());
         return build(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
+    @ExceptionHandler(TokenExpiredException.class)
+    public final ResponseEntity<ErrorResponse> handleTokenExpiredException(final TokenExpiredException e) {
+        log.error("Token expired: {}", e.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
+    @ExceptionHandler(RefreshTokenExpiredException.class)
+    public final ResponseEntity<ErrorResponse> handleRefreshTokenExpiredException(final RefreshTokenExpiredException e) {
+        log.error("Refresh token expired: {}", e.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "Refresh token expired. Please login again.");
+    }
+
+    @ExceptionHandler(ExpiredJwtException.class)
+    public final ResponseEntity<ErrorResponse> handleExpiredJwtException(final ExpiredJwtException e) {
+        log.error("JWT token expired: {}", e.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "Access token expired. Please refresh your token.");
     }
 
     @ExceptionHandler(AccessDeniedException.class)

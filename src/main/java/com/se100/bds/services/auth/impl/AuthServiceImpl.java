@@ -1,7 +1,6 @@
 package com.se100.bds.services.auth.impl;
 
 import com.se100.bds.dtos.responses.auth.TokenResponse;
-import com.se100.bds.entities.auth.JwtToken;
 import com.se100.bds.entities.user.User;
 import com.se100.bds.exceptions.NotFoundException;
 import com.se100.bds.exceptions.RefreshTokenExpiredException;
@@ -9,9 +8,7 @@ import com.se100.bds.securities.JwtTokenProvider;
 import com.se100.bds.securities.JwtUserDetails;
 import com.se100.bds.services.MessageSourceService;
 import com.se100.bds.services.auth.AuthService;
-import com.se100.bds.services.auth.JwtTokenService;
 import com.se100.bds.services.user.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -23,21 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-import static com.se100.bds.utils.Constants.TOKEN_HEADER;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthServiceImpl implements AuthService {
     private final UserService userService;
 
-    private final JwtTokenService jwtTokenService;
-
     private final AuthenticationManager authenticationManager;
 
     private final JwtTokenProvider jwtTokenProvider;
-
-    private final HttpServletRequest httpServletRequest;
 
     private final MessageSourceService messageSourceService;
 
@@ -56,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
 
         String badCredentialsMessage = messageSourceService.get("Unauthorized");
 
-        User user = null;
+        User user;
         try {
             user = userService.findByEmail(email);
             email = user.getEmail();
@@ -94,7 +85,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Logout from bearer string by user.
+     * Logout - Stateless JWT doesn't require token deletion.
+     * Token will expire naturally or client should discard it.
      *
      * @param user   User
      * @param bearer String
@@ -102,46 +94,59 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(User user, final String bearer) {
-        JwtToken jwtToken = jwtTokenService.findByTokenOrRefreshToken(
-                jwtTokenProvider.extractJwtFromBearerString(bearer), "");
-
-        if (!user.getId().equals(jwtToken.getUserId())) {
-            log.error("User id: {} is not equal to token user id: {}", user.getId(), jwtToken.getUserId());
-            throw new AuthenticationCredentialsNotFoundException(messageSourceService.get("bad_credentials"));
-        }
-
-        jwtTokenService.delete(jwtToken);
+        log.info("Logout request for user: {}", user.getId());
+        // In stateless JWT, logout is handled client-side by discarding the token
+        // The token will expire naturally based on its expiration time
+        // If you need immediate invalidation, consider implementing a token blacklist
     }
 
     @Override
     @Transactional
     public void logout(User user) {
-        logout(user, httpServletRequest.getHeader(TOKEN_HEADER));
+        log.info("Logout request for user: {}", user.getId());
+        // In stateless JWT, logout is handled client-side by discarding the token
     }
 
     @Override
     @Transactional
     public TokenResponse refresh(final String refreshToken) {
-        log.info("Refresh request received: {}", refreshToken);
+        log.info("Refresh request received");
 
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            log.error("Refresh token is expired.");
-            throw new RefreshTokenExpiredException();
+        // Validate refresh token
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            log.error("Refresh token is null or empty");
+            throw new RefreshTokenExpiredException("Refresh token is required");
         }
 
+        // Check if refresh token is valid and not expired
+        try {
+            if (!jwtTokenProvider.validateToken(refreshToken)) {
+                log.error("Refresh token is invalid");
+                throw new RefreshTokenExpiredException("Invalid refresh token");
+            }
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.error("Refresh token has expired");
+            throw new RefreshTokenExpiredException("Refresh token expired. Please login again.");
+        } catch (Exception e) {
+            log.error("Refresh token validation failed: {}", e.getMessage());
+            throw new RefreshTokenExpiredException("Invalid refresh token");
+        }
+
+        // Extract user from refresh token
         User user = jwtTokenProvider.getUserFromToken(refreshToken);
-        JwtToken oldToken = jwtTokenService.findByUserIdAndRefreshToken(user.getId(), refreshToken);
-
-        boolean rememberMe = false;
-        if (oldToken != null) {
-            jwtTokenService.delete(oldToken);
+        if (user == null) {
+            log.error("User not found from refresh token");
+            throw new RefreshTokenExpiredException("Invalid refresh token - user not found");
         }
 
-        return generateTokens(user.getId(), rememberMe); // Tạo và trả về token mới cho người dùng
+        log.info("Generating new tokens for user: {}", user.getId());
+        // Generate new access token and new refresh token
+        return generateTokens(user.getId(), false);
     }
 
     /**
-     * Đây là hàm dùng để sinh ra access token và refresh token mới cho người dùng, đồng thời lưu thông tin token vào database.
+     * Generate access token and refresh token for the user.
+     * Stateless implementation - tokens are NOT saved to Redis.
      */
     @Override
     @Transactional
@@ -149,14 +154,7 @@ public class AuthServiceImpl implements AuthService {
         String token = jwtTokenProvider.generateJwt(id.toString());
         String refreshToken = jwtTokenProvider.generateRefresh(id.toString());
 
-        jwtTokenService.save(JwtToken.builder()
-                .userId(id)
-                .token(token)
-                .refreshToken(refreshToken)
-                .tokenTimeToLive(jwtTokenProvider.getRefreshTokenExpiresIn())
-                .build());
         log.info("Token generated for user: {}", id);
-        log.info("Token id: {}", id);
 
 
         User user = userService.findById(id);

@@ -26,6 +26,7 @@ public class User extends AbstractBaseEntity {
     @Column(name = "phone_number", nullable = false, unique = true)
     private String phoneNumber;
 
+    // TODO: Change to use city and district id
     @Column(name = "address", nullable = false)
     private String address;
 
@@ -43,12 +44,6 @@ public class User extends AbstractBaseEntity {
 
     @Column(name = "status", nullable = false)
     private Constants.StatusProfileEnum status;
-
-    @Column(name = "profile_description", length = 1000)
-    private String profileDescription;
-
-    @Column(name = "birth_date")
-    private LocalDateTime birthDate;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
