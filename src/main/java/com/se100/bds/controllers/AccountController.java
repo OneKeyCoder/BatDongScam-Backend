@@ -7,7 +7,7 @@ import com.se100.bds.dtos.responses.error.ErrorResponse;
 import com.se100.bds.dtos.responses.user.UserResponse;
 import com.se100.bds.entities.user.User;
 import com.se100.bds.mappers.UserMapper;
-import com.se100.bds.services.user.UserService;
+import com.se100.bds.services.domains.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

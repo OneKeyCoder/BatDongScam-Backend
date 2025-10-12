@@ -2,7 +2,7 @@ package com.se100.bds.securities;
 
 import com.se100.bds.entities.user.User;
 import com.se100.bds.exceptions.NotFoundException;
-import com.se100.bds.services.user.UserService;
+import com.se100.bds.services.domains.user.UserService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;

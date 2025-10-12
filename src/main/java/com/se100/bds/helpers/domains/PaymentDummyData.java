@@ -2,8 +2,8 @@ package com.se100.bds.helpers.domains;
 
 import com.se100.bds.entities.contract.Contract;
 import com.se100.bds.entities.contract.Payment;
-import com.se100.bds.repositories.contract.ContractRepository;
-import com.se100.bds.repositories.contract.PaymentRepository;
+import com.se100.bds.repositories.domains.contract.ContractRepository;
+import com.se100.bds.repositories.domains.contract.PaymentRepository;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

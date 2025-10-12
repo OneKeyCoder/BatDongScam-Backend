@@ -1,6 +1,6 @@
 package com.se100.bds.securities;
 
-import com.se100.bds.services.user.UserService;
+import com.se100.bds.services.domains.user.UserService;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

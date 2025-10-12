@@ -2,7 +2,7 @@ package com.se100.bds.helpers.domains;
 
 import com.se100.bds.entities.user.PropertyOwner;
 import com.se100.bds.entities.user.User;
-import com.se100.bds.repositories.user.UserRepository;
+import com.se100.bds.repositories.domains.user.UserRepository;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

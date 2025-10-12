@@ -1,7 +1,7 @@
 package com.se100.bds.securities;
 
 import com.se100.bds.entities.user.User;
-import com.se100.bds.services.user.UserService;
+import com.se100.bds.services.domains.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;

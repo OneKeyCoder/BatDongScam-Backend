@@ -310,8 +310,11 @@ public final class Constants {
     @AllArgsConstructor
     public enum PropertyStatusEnum {
         PENDING("PENDING"),
-        APPROVED("APPROVED"),
-        REJECTED("REJECTED");
+        REJECTED("REJECTED"),
+        SOLD("SOLD"),
+        RENTED("RENTED"),
+        AVAILABLE("AVAILABLE"),
+        UNAVAILABLE("UNAVAILABLE");
 
         private final String value;
 
