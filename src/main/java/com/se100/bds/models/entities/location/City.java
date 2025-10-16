@@ -1,5 +1,6 @@
 package com.se100.bds.models.entities.location;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -42,5 +43,6 @@ public class City extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "city", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<District> districts = new ArrayList<>();
 }

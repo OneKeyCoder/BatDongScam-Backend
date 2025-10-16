@@ -14,3 +14,6 @@ down:
 
 # Stop, Build and Start the Docker containers
 rebuild: down build up
+
+clean:
+	mvnw.cmd clean

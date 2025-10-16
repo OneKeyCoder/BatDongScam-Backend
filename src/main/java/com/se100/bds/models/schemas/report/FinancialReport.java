@@ -77,4 +77,10 @@ public class FinancialReport extends AbstractBaseMongoReport {
 
     @Field("revenue_sales_agents_current_month")
     private Map<UUID, BigDecimal> revenueSalesAgentsCurrentMonth;
+
+    @Field("sale_agents_salary_month")
+    private Map<UUID, BigDecimal> saleAgentsSalaryMonth;
+
+    @Field("sale_agents_salary_career")
+    private Map<UUID, BigDecimal> saleAgentsSalaryCareer;
 }

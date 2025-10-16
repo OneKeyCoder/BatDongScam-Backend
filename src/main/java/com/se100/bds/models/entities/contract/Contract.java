@@ -45,12 +45,6 @@ public class Contract extends AbstractBaseEntity {
     @Column(name = "contract_number", nullable = false, unique = true, length = 50)
     private String contractNumber;
 
-    @Column(name = "commission_amount", nullable = false, precision = 15, scale = 2)
-    private BigDecimal commissionAmount;
-
-    @Column(name = "service_fee_amount", nullable = false, precision = 15, scale = 2)
-    private BigDecimal serviceFeeAmount;
-
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 

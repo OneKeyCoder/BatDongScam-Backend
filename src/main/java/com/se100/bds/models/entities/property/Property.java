@@ -36,6 +36,9 @@ public class Property extends AbstractBaseEntity {
     @JoinColumn(name = "assigned_agent_id")
     private SaleAgent assignedAgent;
 
+    @Column(name = "service_fee_amount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal serviceFeeAmount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_type_id", nullable = false)
     private PropertyType propertyType;

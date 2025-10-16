@@ -180,17 +180,6 @@ public class UserServiceImpl implements UserService {
         customer.setUser(user);
         user.setCustomer(customer);
 
-        customer.setCustomerTier(Constants.CustomerTierEnum.BRONZE);
-        customer.setCurrentMonthPurchases(0);
-        customer.setTotalPurchases(0);
-        customer.setLeadScore(0);
-        customer.setCurrentMonthSearches(0);
-        customer.setCurrentMonthViewings(0);
-        customer.setCurrentMonthRentals(0);
-        customer.setTotalRentals(0);
-        customer.setCurrentMonthSpending(BigDecimal.ZERO);
-        customer.setTotalSpending(BigDecimal.ZERO);
-
         userRepository.save(user);
 
         return user;

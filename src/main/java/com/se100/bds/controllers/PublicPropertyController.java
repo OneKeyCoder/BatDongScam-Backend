@@ -75,7 +75,7 @@ public class PublicPropertyController extends AbstractBaseController {
             @RequestParam(defaultValue = "desc") String sortType,
 
             @Parameter(description = "Field to sort by")
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false) String sortBy,
 
             @Parameter(description = "List of city IDs to filter by")
             @RequestParam(required = false) List<UUID> cityIds,

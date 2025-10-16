@@ -66,7 +66,7 @@ public class PublicLocationController extends AbstractBaseController {
             @RequestParam(defaultValue = "desc") String sortType,
 
             @Parameter(description = "Field to sort by")
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false) String sortBy,
 
             @Parameter(description = "Number of top cities to retrieve (K)", example = "10")
             @RequestParam(defaultValue = "10") int topK

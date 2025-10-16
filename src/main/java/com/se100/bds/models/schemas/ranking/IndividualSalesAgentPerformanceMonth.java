@@ -34,9 +34,6 @@ public class IndividualSalesAgentPerformanceMonth extends AbstractBaseMongoSchem
     @Field("ranking_position")
     private Integer rankingPosition;
 
-    @Field("month_revenue")
-    private BigDecimal monthRevenue;
-
     @Field("handling_properties")
     private Integer handlingProperties;
 

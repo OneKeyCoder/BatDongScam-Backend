@@ -79,8 +79,6 @@ public class ContractDummyData {
                     .agent(agent)
                     .contractType(contractType)
                     .contractNumber(String.format("CT%06d%04d", LocalDate.now().getYear(), i))
-                    .commissionAmount(commissionAmount)
-                    .serviceFeeAmount(serviceFeeAmount)
                     .startDate(startDate)
                     .endDate(endDate)
                     .specialTerms("Standard terms and conditions apply")

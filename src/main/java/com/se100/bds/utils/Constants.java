@@ -86,6 +86,24 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum ContributionTierEnum {
+        BRONZE("BRONZE"),
+        SILVER("SILVER"),
+        GOLD("GOLD"),
+        PLATINUM("PLATINUM");
+
+        private final String value;
+
+        public static ContributionTierEnum get(final String name) {
+            return Stream.of(ContributionTierEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid contribution tier name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum AppointmentStatusEnum {
         PENDING("PENDING"),
         CONFIRMED("CONFIRMED"),
@@ -164,7 +182,10 @@ public final class Constants {
         FULL_PAY("FULL_PAY"),
         MONTHLY("MONTHLY"),
         PENALTY("PENALTY"),
-        REFUND("REFUND");
+        REFUND("REFUND"),
+        MONEY_SALE("MONEY_SALE"),
+        MONEY_RENTAL("MONEY_RENTAL"),
+        SALARY("SALARY");
 
         private final String value;
 
@@ -311,10 +332,13 @@ public final class Constants {
     public enum PropertyStatusEnum {
         PENDING("PENDING"),
         REJECTED("REJECTED"),
+        APPROVED("APPROVED"),
+        PAID("PAID"),
         SOLD("SOLD"),
         RENTED("RENTED"),
         AVAILABLE("AVAILABLE"),
-        UNAVAILABLE("UNAVAILABLE");
+        UNAVAILABLE("UNAVAILABLE"),
+        DELETED("DELETED");
 
         private final String value;
 
@@ -323,24 +347,6 @@ public final class Constants {
                     .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid property status name: %s", name)));
-        }
-    }
-
-    @Getter
-    @AllArgsConstructor
-    public enum LeadClassificationEnum {
-        COLD("COLD"),
-        WARM("WARM"),
-        HOT("HOT"),
-        CONVERTED("CONVERTED");
-
-        private final String value;
-
-        public static LeadClassificationEnum get(final String name) {
-            return Stream.of(LeadClassificationEnum.values())
-                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid lead classification name: %s", name)));
         }
     }
 
@@ -402,4 +408,3 @@ public final class Constants {
     }
 
 }
-

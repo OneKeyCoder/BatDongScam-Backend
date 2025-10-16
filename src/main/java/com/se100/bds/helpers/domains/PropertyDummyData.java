@@ -86,6 +86,7 @@ public class PropertyDummyData {
                     .balconyOrientation(getRandomOrientation())
                     .yearBuilt(2000 + random.nextInt(25)) // 2000-2024
                     .priceAmount(priceAmount)
+                    .serviceFeeAmount(priceAmount.multiply(BigDecimal.valueOf(0.02)))
                     .pricePerSquareMeter(pricePerSqm)
                     .commissionRate(new BigDecimal("0.02")) // 2% commission
                     .amenities("WiFi, Air Conditioning, Parking, Security")

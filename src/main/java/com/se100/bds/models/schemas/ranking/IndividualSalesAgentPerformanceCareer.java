@@ -21,9 +21,6 @@ public class IndividualSalesAgentPerformanceCareer extends AbstractBaseMongoSche
     @Field("performance_point")
     private Integer performancePoint;
 
-    @Field("total_revenue")
-    private BigDecimal totalRevenue;
-
     @Field("career_ranking")
     private Integer careerRanking;
 

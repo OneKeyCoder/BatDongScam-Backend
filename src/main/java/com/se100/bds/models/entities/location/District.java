@@ -1,5 +1,6 @@
 package com.se100.bds.models.entities.location;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,6 +22,7 @@ import java.util.List;
 public class District extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id", nullable = false)
+    @JsonIgnore
     private City city;
 
     @Column(name = "district_name")
@@ -46,5 +48,6 @@ public class District extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "district", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<Ward> wards = new ArrayList<>();
 }

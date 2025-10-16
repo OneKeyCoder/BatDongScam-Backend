@@ -25,6 +25,7 @@ public class DummyData implements CommandLineRunner {
     private final NotificationDummyData notificationDummyData;
     private final ViolationDummyData violationDummyData;
     private final DocumentDummyData documentDummyData;
+    private final SearchLogDummyData searchLogDummyData;
 
     @Override
     public void run(String... args) throws Exception {
@@ -80,6 +81,9 @@ public class DummyData implements CommandLineRunner {
 
         // 14. Create violation reports
         violationDummyData.createDummy();
+
+        // 15. Create search logs (100k logs with proper hierarchical relationships)
+        searchLogDummyData.createDummy();
 
         log.info("Done initializing dummy data");
     }
