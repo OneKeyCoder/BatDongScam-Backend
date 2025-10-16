@@ -1,7 +1,9 @@
 package com.se100.bds.repositories.domains.property;
 
 import com.se100.bds.models.entities.property.Property;
+import com.se100.bds.repositories.dtos.MediaProjection;
 import com.se100.bds.repositories.dtos.PropertyCardProtection;
+import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -89,4 +91,78 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
             @Param("transactionType") String transactionType,
             @Param("userId") UUID userId
     );
+
+    @Query("""
+        SELECT 
+            p.id AS id,
+            p.createdAt AS createdAt,
+            p.updatedAt AS updatedAt,
+            po.id AS ownerId,
+            u1.firstName AS ownerFirstName,
+            u1.lastName AS ownerLastName,
+            u1.phoneNumber AS ownerPhoneNumber,
+            u1.createdAt AS ownerCreatedAt,
+            u1.updatedAt AS ownerUpdatedAt,
+            sa.id AS agentId,
+            u2.firstName AS agentFirstName,
+            u2.lastName AS agentLastName,
+            u2.phoneNumber AS agentPhoneNumber,
+            u2.createdAt AS agentCreatedAt,
+            u2.updatedAt AS agentUpdatedAt,
+            p.serviceFeeAmount AS serviceFeeAmount,
+            pt.id AS propertyTypeId,
+            pt.typeName AS propertyTypeName,
+            w.id AS wardId,
+            w.wardName AS wardName,
+            d.id AS districtId,
+            d.districtName AS districtName,
+            c.id AS cityId,
+            c.cityName AS cityName,
+            p.title AS title,
+            p.description AS description,
+            CAST(p.transactionType AS string) AS transactionType,
+            p.fullAddress AS fullAddress,
+            p.area AS area,
+            p.rooms AS rooms,
+            p.bathrooms AS bathrooms,
+            p.floors AS floors,
+            p.bedrooms AS bedrooms,
+            CAST(p.houseOrientation AS string) AS houseOrientation,
+            CAST(p.balconyOrientation AS string) AS balconyOrientation,
+            p.yearBuilt AS yearBuilt,
+            p.priceAmount AS priceAmount,
+            p.pricePerSquareMeter AS pricePerSquareMeter,
+            p.commissionRate AS commissionRate,
+            p.amenities AS amenities,
+            CAST(p.status AS string) AS status,
+            p.viewCount AS viewCount,
+            p.approvedAt AS approvedAt
+        FROM Property p
+        JOIN PropertyOwner po ON p.owner.id = po.id
+        JOIN User u1 ON po.user.id = u1.id
+        LEFT JOIN SaleAgent sa ON p.assignedAgent.id = sa.id
+        LEFT JOIN User u2 ON sa.user.id = u2.id
+        JOIN PropertyType pt ON p.propertyType.id = pt.id
+        JOIN Ward w ON p.ward.id = w.id
+        JOIN District d ON w.district.id = d.id
+        JOIN City c ON d.city.id = c.id
+        WHERE p.id = :propertyId
+    """)
+    PropertyDetailsProjection findPropertyDetailsById(@Param("propertyId") UUID propertyId);
+
+    @Query("""
+        SELECT
+            m.id AS id,
+            m.createdAt AS createdAt,
+            m.updatedAt AS updatedAt,
+            CAST(m.mediaType AS string) AS mediaType,
+            m.fileName AS fileName,
+            m.filePath AS filePath,
+            m.mimeType AS mimeType,
+            m.documentType AS documentType
+        FROM Media m
+        WHERE m.property.id = :propertyId
+        ORDER BY m.createdAt ASC
+    """)
+    List<MediaProjection> findMediaByPropertyId(@Param("propertyId") UUID propertyId);
 }

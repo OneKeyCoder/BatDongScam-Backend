@@ -1,5 +1,6 @@
 package com.se100.bds.models.entities.property;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
 import com.se100.bds.models.entities.user.PropertyOwner;
 import com.se100.bds.models.entities.user.SaleAgent;
@@ -30,10 +31,12 @@ import java.util.List;
 public class Property extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
+    @JsonIgnore
     private PropertyOwner owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_agent_id")
+    @JsonIgnore
     private SaleAgent assignedAgent;
 
     @Column(name = "service_fee_amount", nullable = false, precision = 15, scale = 2)
@@ -41,10 +44,12 @@ public class Property extends AbstractBaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_type_id", nullable = false)
+    @JsonIgnore
     private PropertyType propertyType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ward_id", nullable = false)
+    @JsonIgnore
     private Ward ward;
 
     @Column(name = "title", nullable = false, length = 200)
@@ -110,21 +115,26 @@ public class Property extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<Media> mediaList = new ArrayList<>();
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<Appointment> appointments = new ArrayList<>();
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<Contract> contracts = new ArrayList<>();
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<ViolationReport> violations = new ArrayList<>();
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<IdentificationDocument> documents = new ArrayList<>();
 }

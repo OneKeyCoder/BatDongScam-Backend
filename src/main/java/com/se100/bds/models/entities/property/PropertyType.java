@@ -1,5 +1,6 @@
 package com.se100.bds.models.entities.property;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,5 +33,6 @@ public class PropertyType extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "propertyType", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnore
     private List<Property> properties = new ArrayList<>();
 }

@@ -2,9 +2,12 @@ package com.se100.bds.controllers;
 
 import com.se100.bds.controllers.base.AbstractBaseController;
 import com.se100.bds.dtos.responses.PageResponse;
+import com.se100.bds.dtos.responses.SingleResponse;
 import com.se100.bds.dtos.responses.error.ErrorResponse;
+import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.SimplePropertyCard;
 import com.se100.bds.mappers.PropertyMapper;
+import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.dtos.results.PropertyCard;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -143,5 +147,39 @@ public class PublicPropertyController extends AbstractBaseController {
         Page<SimplePropertyCard> simplePropertyCards = propertyMapper.mapToPage(propertyCards, SimplePropertyCard.class);
 
         return responseFactory.successPage(simplePropertyCards, "Property cards retrieved successfully");
+    }
+
+    @GetMapping("/{propertyId}")
+    @Operation(
+            summary = "Get property details by ID",
+            description = "Retrieve detailed information about a specific property including owner, agent, location, and media",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Property not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<PropertyDetails>> getPropertyDetails(
+            @Parameter(description = "Property ID", required = true)
+            @PathVariable UUID propertyId
+    ) {
+        log.info("Getting property details for ID: {}", propertyId);
+
+        PropertyDetails propertyDetails = propertyService.getPropertyDetailsById(propertyId);
+
+        return responseFactory.successSingle(propertyDetails, "Property details retrieved successfully");
     }
 }

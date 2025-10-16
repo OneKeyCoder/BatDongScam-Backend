@@ -1,5 +1,6 @@
 package com.se100.bds.models.entities.property;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
 import com.se100.bds.utils.Constants;
 import jakarta.persistence.*;
@@ -18,6 +19,7 @@ import lombok.*;
 public class Media extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
+    @JsonIgnore
     private Property property;
 
     @Enumerated(EnumType.STRING)

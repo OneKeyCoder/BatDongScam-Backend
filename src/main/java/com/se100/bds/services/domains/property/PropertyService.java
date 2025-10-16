@@ -1,6 +1,8 @@
 package com.se100.bds.services.domains.property;
 
+import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.models.entities.property.Property;
+import com.se100.bds.models.entities.property.PropertyType;
 import com.se100.bds.services.dtos.results.PropertyCard;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,4 +18,6 @@ public interface PropertyService {
                                               Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors, String houseOrientation, String balconyOrientation,
                                               String transactionType, int topK,
                                               Pageable pageable);
+    Page<PropertyType> getAllTypes(Pageable pageable);
+    PropertyDetails getPropertyDetailsById(UUID propertyId);
 }

@@ -4,8 +4,14 @@ import com.se100.bds.controllers.base.AbstractBaseController;
 import com.se100.bds.dtos.responses.PageResponse;
 import com.se100.bds.dtos.responses.SingleResponse;
 import com.se100.bds.dtos.responses.error.ErrorResponse;
+import com.se100.bds.dtos.responses.location.CityResponse;
+import com.se100.bds.dtos.responses.property.PropertyTypeResponse;
+import com.se100.bds.mappers.LocationMapper;
+import com.se100.bds.mappers.PropertyMapper;
 import com.se100.bds.models.entities.location.City;
+import com.se100.bds.models.entities.property.PropertyType;
 import com.se100.bds.services.domains.location.LocationService;
+import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.utils.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,6 +37,9 @@ import java.util.UUID;
 @Slf4j
 public class PublicLocationController extends AbstractBaseController {
     private final LocationService locationService;
+    private final LocationMapper locationMapper;
+    private final PropertyService propertyService;
+    private final PropertyMapper propertyMapper;
 
     @GetMapping("/cities/top")
     @Operation(
@@ -55,7 +64,7 @@ public class PublicLocationController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<City>> getTopCities(
+    public ResponseEntity<PageResponse<CityResponse>> getTopCities(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
 
@@ -75,8 +84,9 @@ public class PublicLocationController extends AbstractBaseController {
 
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<City> topCities = locationService.topKCities(pageable, topK);
+        Page<CityResponse> cityResponses = locationMapper.mapToPage(topCities, CityResponse.class);
 
-        return responseFactory.successPage(topCities, "Top cities retrieved successfully");
+        return responseFactory.successPage(cityResponses, "Top cities retrieved successfully");
     }
 
     @GetMapping("/children")
@@ -125,5 +135,50 @@ public class PublicLocationController extends AbstractBaseController {
                 : String.format("Child %ss retrieved successfully", searchType.name().toLowerCase());
 
         return responseFactory.successSingle(childLocations, message);
+    }
+
+    @GetMapping("/property-types")
+    @Operation(
+            summary = "Get all property types",
+            description = "Retrieve a paginated list of all property types",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid parameters",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<PropertyTypeResponse>> getAllPropertyTypes(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+
+            @Parameter(description = "Number of items per page")
+            @RequestParam(defaultValue = "10") int limit,
+
+            @Parameter(description = "Sort direction: asc or desc")
+            @RequestParam(defaultValue = "desc") String sortType,
+
+            @Parameter(description = "Field to sort by")
+            @RequestParam(required = false) String sortBy
+    ) {
+        log.info("Getting all property types - page: {}, limit: {}", page, limit);
+
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<PropertyType> propertyTypes = propertyService.getAllTypes(pageable);
+        Page<PropertyTypeResponse> propertyTypeResponses = propertyMapper.mapToPage(propertyTypes, PropertyTypeResponse.class);
+
+        return responseFactory.successPage(propertyTypeResponses, "Property types retrieved successfully");
     }
 }
