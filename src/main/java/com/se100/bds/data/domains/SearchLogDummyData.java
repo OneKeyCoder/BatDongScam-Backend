@@ -1,4 +1,4 @@
-package com.se100.bds.helpers.domains;
+package com.se100.bds.data.domains;
 
 import com.se100.bds.models.entities.location.City;
 import com.se100.bds.models.entities.location.District;

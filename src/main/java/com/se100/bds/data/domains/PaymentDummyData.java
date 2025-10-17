@@ -1,4 +1,4 @@
-package com.se100.bds.helpers.domains;
+package com.se100.bds.data.domains;
 
 import com.se100.bds.models.entities.contract.Contract;
 import com.se100.bds.models.entities.contract.Payment;

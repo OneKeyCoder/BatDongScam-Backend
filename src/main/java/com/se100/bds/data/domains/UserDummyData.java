@@ -1,4 +1,4 @@
-package com.se100.bds.helpers.domains;
+package com.se100.bds.data.domains;
 
 import com.se100.bds.models.entities.user.Customer;
 import com.se100.bds.models.entities.user.SaleAgent;
@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;

@@ -1,6 +1,6 @@
-package com.se100.bds.helpers;
+package com.se100.bds.data;
 
-import com.se100.bds.helpers.domains.*;
+import com.se100.bds.data.domains.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
