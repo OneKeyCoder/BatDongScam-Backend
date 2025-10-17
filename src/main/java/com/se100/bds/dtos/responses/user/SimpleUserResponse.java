@@ -13,7 +13,7 @@ import lombok.experimental.SuperBuilder;
 public class SimpleUserResponse extends AbstractBaseDataResponse {
     private String firstName;
     private String lastName;
-    private String fullName;
+    private String zaloContact;
     private String phoneNumber;
 }
 

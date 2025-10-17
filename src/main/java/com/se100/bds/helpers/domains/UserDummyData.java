@@ -113,6 +113,7 @@ public class UserDummyData {
         return User.builder()
                 .email(email)
                 .phoneNumber(phoneNumber)
+                .zaloContact(phoneNumber)
                 .firstName(firstName)
                 .lastName(lastName)
                 .address(address)

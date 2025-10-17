@@ -32,6 +32,9 @@ public class User extends AbstractBaseEntity {
     @Column(name = "phone_number", nullable = false, unique = true)
     private String phoneNumber;
 
+    @Column(name = "zalo_contact")
+    private String zaloContact;
+
     // TODO: Change to use city and district id
     @Column(name = "address", nullable = false)
     private String address;

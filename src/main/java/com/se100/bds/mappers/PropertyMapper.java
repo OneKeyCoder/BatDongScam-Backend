@@ -5,11 +5,14 @@ import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.SimplePropertyCard;
 import com.se100.bds.dtos.responses.user.SimpleUserResponse;
 import com.se100.bds.models.entities.property.Property;
+import com.se100.bds.repositories.dtos.MediaProjection;
+import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
 import com.se100.bds.services.dtos.results.PropertyCard;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
@@ -50,7 +53,6 @@ public class PropertyMapper extends BaseMapper {
                                     .id(user.getId())
                                     .firstName(user.getFirstName())
                                     .lastName(user.getLastName())
-                                    .fullName(user.getFirstName() + " " + user.getLastName())
                                     .phoneNumber(user.getPhoneNumber())
                                     .createdAt(user.getCreatedAt())
                                     .updatedAt(user.getUpdatedAt())
@@ -68,7 +70,6 @@ public class PropertyMapper extends BaseMapper {
                                     .id(user.getId())
                                     .firstName(user.getFirstName())
                                     .lastName(user.getLastName())
-                                    .fullName(user.getFirstName() + " " + user.getLastName())
                                     .phoneNumber(user.getPhoneNumber())
                                     .createdAt(user.getCreatedAt())
                                     .updatedAt(user.getUpdatedAt())
@@ -166,5 +167,79 @@ public class PropertyMapper extends BaseMapper {
                         return null;
                     }).map(src -> src, PropertyDetails::setMediaList);
                 });
+    }
+
+    public PropertyDetails toPropertyDetails(PropertyDetailsProjection projection, List<MediaProjection> mediaProjections) {
+        if (projection == null) {
+            return null;
+        }
+
+        // Map media projections to DTOs
+        List<MediaResponse> mediaResponses = mediaProjections != null ? mediaProjections.stream()
+                .map(media -> MediaResponse.builder()
+                        .id(media.id())
+                        .createdAt(media.createdAt())
+                        .updatedAt(media.updatedAt())
+                        .mediaType(media.mediaType())
+                        .fileName(media.fileName())
+                        .filePath(media.filePath())
+                        .mimeType(media.mimeType())
+                        .documentType(media.documentType())
+                        .build())
+                .collect(Collectors.toList()) : null;
+
+        // Map projection to DTO
+        return PropertyDetails.builder()
+                .id(projection.id())
+                .createdAt(projection.createdAt())
+                .updatedAt(projection.updatedAt())
+                .owner(projection.ownerId() != null ? SimpleUserResponse.builder()
+                        .id(projection.ownerId())
+                        .firstName(projection.ownerFirstName())
+                        .lastName(projection.ownerLastName())
+                        .phoneNumber(projection.ownerPhoneNumber())
+                        .zaloContact(projection.ownerZaloContact())
+                        .createdAt(projection.ownerCreatedAt())
+                        .updatedAt(projection.ownerUpdatedAt())
+                        .build() : null)
+                .assignedAgent(projection.agentId() != null ? SimpleUserResponse.builder()
+                        .id(projection.agentId())
+                        .firstName(projection.agentFirstName())
+                        .lastName(projection.agentLastName())
+                        .phoneNumber(projection.agentPhoneNumber())
+                        .zaloContact(projection.agentZaloContact())
+                        .createdAt(projection.agentCreatedAt())
+                        .updatedAt(projection.agentUpdatedAt())
+                        .build() : null)
+                .serviceFeeAmount(projection.serviceFeeAmount())
+                .propertyTypeId(projection.propertyTypeId())
+                .propertyTypeName(projection.propertyTypeName())
+                .wardId(projection.wardId())
+                .wardName(projection.wardName())
+                .districtId(projection.districtId())
+                .districtName(projection.districtName())
+                .cityId(projection.cityId())
+                .cityName(projection.cityName())
+                .title(projection.title())
+                .description(projection.description())
+                .transactionType(projection.transactionType())
+                .fullAddress(projection.fullAddress())
+                .area(projection.area())
+                .rooms(projection.rooms())
+                .bathrooms(projection.bathrooms())
+                .floors(projection.floors())
+                .bedrooms(projection.bedrooms())
+                .houseOrientation(projection.houseOrientation())
+                .balconyOrientation(projection.balconyOrientation())
+                .yearBuilt(projection.yearBuilt())
+                .priceAmount(projection.priceAmount())
+                .pricePerSquareMeter(projection.pricePerSquareMeter())
+                .commissionRate(projection.commissionRate())
+                .amenities(projection.amenities())
+                .status(projection.status())
+                .viewCount(projection.viewCount())
+                .approvedAt(projection.approvedAt())
+                .mediaList(mediaResponses)
+                .build();
     }
 }
