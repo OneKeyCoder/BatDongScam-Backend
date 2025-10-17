@@ -57,11 +57,14 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     JOIN Ward w ON p.ward.id = w.id
     JOIN District d ON w.district.id = d.id
     JOIN City c ON d.city.id = c.id
+    LEFT JOIN PropertyOwner po ON p.owner.id = po.id
     WHERE
-        (COALESCE(:cityIds, NULL) IS NULL OR c.id IN :cityIds)
+        (COALESCE(:propertyIds, NULL) IS NULL OR p.id IN :propertyIds)
+        AND (COALESCE(:cityIds, NULL) IS NULL OR c.id IN :cityIds)
         AND (COALESCE(:districtIds, NULL) IS NULL OR d.id IN :districtIds)
         AND (COALESCE(:wardIds, NULL) IS NULL OR w.id IN :wardIds)
         AND (COALESCE(:propertyTypeIds, NULL) IS NULL OR p.propertyType.id IN :propertyTypeIds)
+        AND (:ownerId IS NULL OR po.id = :ownerId)
         AND (:minPrice IS NULL OR p.priceAmount >= :minPrice)
         AND (:maxPrice IS NULL OR p.priceAmount <= :maxPrice)
         AND (:totalArea IS NULL OR p.area >= :totalArea)
@@ -75,10 +78,12 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     """)
     Page<PropertyCardProtection> findAllPropertyCardsWithFilter(
             Pageable pageable,
+            @Param("propertyIds") List<UUID> propertyIds,
             @Param("cityIds") List<UUID> cityIds,
             @Param("districtIds") List<UUID> districtIds,
             @Param("wardIds") List<UUID> wardIds,
             @Param("propertyTypeIds") List<UUID> propertyTypeIds,
+            @Param("ownerId")  UUID ownerId,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("totalArea") BigDecimal totalArea,

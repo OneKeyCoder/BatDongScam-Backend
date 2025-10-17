@@ -11,13 +11,19 @@ public abstract class AbstractBaseController {
     protected ResponseFactory responseFactory;
 
     public static Pageable createPageable(int page, int limit, String sortType, String sortBy) {
-        Sort.Direction direction = (sortType != null && sortType.equalsIgnoreCase("asc"))
-                ? Sort.Direction.ASC : Sort.Direction.DESC;
-        String sortField = (sortBy != null && !sortBy.isEmpty()) ? sortBy : "id";
-        Sort sort = Sort.by(direction, sortField);
-
         int offset = (page - 1) * limit;
         int pageNumber = offset / limit;
+
+        // If sortBy is null, return unsorted pageable
+        if (sortBy == null) {
+            return PageRequest.of(pageNumber, limit);
+        }
+
+        Sort.Direction direction = (sortType != null && sortType.equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortField = !sortBy.isEmpty() ? sortBy : "id";
+        Sort sort = Sort.by(direction, sortField);
+
         return PageRequest.of(pageNumber, limit, sort);
     }
 

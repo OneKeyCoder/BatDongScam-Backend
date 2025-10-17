@@ -71,18 +71,12 @@ public class PublicLocationController extends AbstractBaseController {
             @Parameter(description = "Number of items per page")
             @RequestParam(defaultValue = "10") int limit,
 
-            @Parameter(description = "Sort direction: asc or desc")
-            @RequestParam(defaultValue = "desc") String sortType,
-
-            @Parameter(description = "Field to sort by")
-            @RequestParam(required = false) String sortBy,
-
             @Parameter(description = "Number of top cities to retrieve (K)", example = "10")
             @RequestParam(defaultValue = "10") int topK
     ) {
         log.info("Getting top {} cities - page: {}, limit: {}", topK, page, limit);
 
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Pageable pageable = createPageable(page, limit, null, null);
         Page<City> topCities = locationService.topKCities(pageable, topK);
         Page<CityResponse> cityResponses = locationMapper.mapToPage(topCities, CityResponse.class);
 

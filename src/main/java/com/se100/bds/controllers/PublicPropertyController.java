@@ -93,6 +93,12 @@ public class PublicPropertyController extends AbstractBaseController {
             @Parameter(description = "List of property type IDs to filter by")
             @RequestParam(required = false) List<UUID> propertyTypeIds,
 
+            @Parameter(description = "Property owner ID")
+            @RequestParam(required = false) UUID ownerId,
+
+            @Parameter(description = "Get top K property? This sorted by most popular property")
+            @RequestParam(required = false) Boolean topK,
+
             @Parameter(description = "Minimum price")
             @RequestParam(required = false) BigDecimal minPrice,
 
@@ -123,6 +129,8 @@ public class PublicPropertyController extends AbstractBaseController {
             @Parameter(description = "Transaction type (e.g., SALE, RENT)")
             @RequestParam(required = false) String transactionType
     ) {
+        if (topK)
+            sortBy = null;
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
 
         Page<PropertyCard> propertyCards = propertyService.getAllCardsWithFilters(
@@ -130,6 +138,7 @@ public class PublicPropertyController extends AbstractBaseController {
                 districtIds,
                 wardIds,
                 propertyTypeIds,
+                ownerId,
                 minPrice,
                 maxPrice,
                 totalArea,
@@ -140,7 +149,7 @@ public class PublicPropertyController extends AbstractBaseController {
                 houseOrientation,
                 balconyOrientation,
                 transactionType,
-                limit,
+                topK,
                 pageable
         );
 

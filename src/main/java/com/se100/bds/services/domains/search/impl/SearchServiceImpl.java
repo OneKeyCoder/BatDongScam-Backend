@@ -107,6 +107,39 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
+    @Override
+    public List<UUID> getMostSearchedPropertyIds(int limit) {
+        try {
+            // Create aggregation pipeline to get most searched properties
+            Aggregation aggregation = Aggregation.newAggregation(
+                    // Match: only get documents where property_id is not null
+                    Aggregation.match(Criteria.where("property_id").ne(null)),
+                    // Group by property_id and count occurrences
+                    Aggregation.group("property_id").count().as("count"),
+                    // Sort by count descending
+                    Aggregation.sort(Sort.Direction.DESC, "count"),
+                    // Limit to top results
+                    Aggregation.limit(limit)
+            );
+
+            // Execute aggregation
+            AggregationResults<SearchAggregationResult> results = mongoTemplate.aggregate(
+                    aggregation,
+                    "search_logs",
+                    SearchAggregationResult.class
+            );
+
+            // Extract UUIDs from results
+            return results.getMappedResults().stream()
+                    .map(result -> UUID.fromString(result.getId()))
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Error getting most searched property IDs with limit {}: {}", limit, e.getMessage());
+            return List.of();
+        }
+    }
+
     /**
      * Map SearchTypeEnum to MongoDB field name
      */

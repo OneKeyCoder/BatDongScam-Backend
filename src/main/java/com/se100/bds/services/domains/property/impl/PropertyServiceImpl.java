@@ -42,9 +42,10 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     public Page<PropertyCard> getAllCardsWithFilters(List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
-                                                     List<UUID> propertyTypeIds, BigDecimal minPrice, BigDecimal maxPrice, BigDecimal totalArea,
+                                                     List<UUID> propertyTypeIds, UUID ownerId,
+                                                     BigDecimal minPrice, BigDecimal maxPrice, BigDecimal totalArea,
                                                      Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors,
-                                                     String houseOrientation, String balconyOrientation, String transactionType, int topK,
+                                                     String houseOrientation, String balconyOrientation, String transactionType, boolean topK,
                                                      Pageable pageable) {
 
         User currentUser = null;
@@ -54,16 +55,22 @@ public class PropertyServiceImpl implements PropertyService {
         } catch (Exception ignored) {
         }
 
-        if (topK > 0) {
-            // TODO: Implement most popular Search for type
+        List<UUID> propertyIds = null;
+        if (topK) {
+            // Get most searched property IDs sorted by search frequency
+            // Use a large limit to get enough results for filtering
+            propertyIds = searchService.getMostSearchedPropertyIds(1000);
+            log.info("Found {} most searched properties", propertyIds.size());
         }
 
         Page<PropertyCardProtection> cardProtections = propertyRepository.findAllPropertyCardsWithFilter(
                 pageable,
+                propertyIds,
                 cityIds,
                 districtIds,
                 wardIds,
                 propertyTypeIds,
+                ownerId,
                 minPrice,
                 maxPrice,
                 totalArea,
