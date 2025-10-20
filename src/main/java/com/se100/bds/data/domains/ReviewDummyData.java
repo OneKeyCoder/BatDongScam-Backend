@@ -2,15 +2,12 @@ package com.se100.bds.data.domains;
 
 import com.se100.bds.models.entities.appointment.Appointment;
 import com.se100.bds.models.entities.contract.Contract;
-import com.se100.bds.models.entities.review.Review;
 import com.se100.bds.repositories.domains.appointment.AppointmentRepository;
 import com.se100.bds.repositories.domains.contract.ContractRepository;
-import com.se100.bds.repositories.domains.review.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -19,7 +16,6 @@ import java.util.Random;
 @Service
 public class ReviewDummyData {
 
-    private final ReviewRepository reviewRepository;
     private final AppointmentRepository appointmentRepository;
     private final ContractRepository contractRepository;
     private final Random random = new Random();
@@ -31,19 +27,17 @@ public class ReviewDummyData {
     private void createDummyReviews() {
         log.info("Creating dummy reviews");
 
-        List<Review> reviews = new ArrayList<>();
+        int appointmentReviewCount = 0;
+        int contractReviewCount = 0;
 
         // Create reviews for completed appointments
         List<Appointment> appointments = appointmentRepository.findAll();
         for (Appointment appointment : appointments) {
             if ("COMPLETED".equals(appointment.getStatus()) && random.nextDouble() < 0.6) { // 60% of completed appointments get reviews
-                Review review = Review.builder()
-                        .appointment(appointment)
-                        .contract(null)
-                        .rating((short) (3 + random.nextInt(3))) // Rating 3-5
-                        .comment(generateAppointmentReviewComment())
-                        .build();
-                reviews.add(review);
+                appointment.setRating((short) (3 + random.nextInt(3))); // Rating 3-5
+                appointment.setComment(generateAppointmentReviewComment());
+                appointmentRepository.save(appointment);
+                appointmentReviewCount++;
             }
         }
 
@@ -51,44 +45,39 @@ public class ReviewDummyData {
         List<Contract> contracts = contractRepository.findAll();
         for (Contract contract : contracts) {
             if (contract.getStatus() == com.se100.bds.utils.Constants.ContractStatusEnum.COMPLETED && random.nextDouble() < 0.7) { // 70% of completed contracts get reviews
-                Review review = Review.builder()
-                        .appointment(null)
-                        .contract(contract)
-                        .rating((short) (3 + random.nextInt(3))) // Rating 3-5
-                        .comment(generateContractReviewComment())
-                        .build();
-                reviews.add(review);
+                contract.setRating((short) (3 + random.nextInt(3))); // Rating 3-5
+                contract.setComment(generateContractReviewComment());
+                contractRepository.save(contract);
+
             }
         }
 
-        reviewRepository.saveAll(reviews);
-        log.info("Saved {} reviews to database", reviews.size());
+        log.info("Added {} appointment reviews and {} contract reviews to database", appointmentReviewCount, contractReviewCount);
     }
 
     private String generateAppointmentReviewComment() {
         String[] comments = {
-                "Very professional agent, showed great knowledge of the property",
-                "The viewing was well organized and on time",
-                "Agent was helpful and answered all my questions",
-                "Good experience, would recommend to others",
-                "The property was exactly as described",
-                "Agent was courteous and professional throughout",
-                "Excellent service, very satisfied with the viewing"
+                "Nhân viên rất chuyên nghiệp, hiểu biết rõ về bất động sản",
+                "Buổi xem nhà được tổ chức tốt và đúng giờ",
+                "Nhân viên hỗ trợ nhiệt tình và trả lời mọi thắc mắc",
+                "Trải nghiệm tốt, sẽ giới thiệu cho người khác",
+                "Bất động sản đúng như mô tả ban đầu",
+                "Nhân viên lịch sự và chuyên nghiệp trong suốt quá trình",
+                "Dịch vụ xuất sắc, rất hài lòng với buổi xem nhà"
         };
         return comments[random.nextInt(comments.length)];
     }
 
     private String generateContractReviewComment() {
         String[] comments = {
-                "Smooth transaction from start to finish",
-                "Very satisfied with the entire process",
-                "Agent handled everything professionally",
-                "Great experience, highly recommend",
-                "All paperwork was handled efficiently",
-                "The whole process was transparent and fair",
-                "Excellent service throughout the contract period"
+                "Quy trình giao dịch diễn ra suôn sẻ từ đầu đến cuối",
+                "Rất hài lòng với toàn bộ quá trình làm hợp đồng",
+                "Nhân viên xử lý mọi việc rất chuyên nghiệp",
+                "Trải nghiệm tuyệt vời, rất đáng để giới thiệu",
+                "Tất cả giấy tờ được xử lý nhanh chóng và hiệu quả",
+                "Toàn bộ quy trình minh bạch và công bằng",
+                "Dịch vụ xuất sắc trong suốt thời gian hợp đồng"
         };
         return comments[random.nextInt(comments.length)];
     }
 }
-

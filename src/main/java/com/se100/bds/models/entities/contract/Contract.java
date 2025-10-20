@@ -4,7 +4,6 @@ import com.se100.bds.models.entities.AbstractBaseEntity;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.user.Customer;
 import com.se100.bds.models.entities.user.SaleAgent;
-import com.se100.bds.models.entities.review.Review;
 import com.se100.bds.utils.Constants;
 import jakarta.persistence.*;
 import lombok.*;
@@ -105,6 +104,9 @@ public class Contract extends AbstractBaseEntity {
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
 
-    @OneToOne(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Review review;
+    @Column(name = "rating")
+    private Short rating;
+
+    @Column(name = "comment", columnDefinition = "TEXT")
+    private String comment;
 }
