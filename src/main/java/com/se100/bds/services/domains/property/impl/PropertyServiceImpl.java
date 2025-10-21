@@ -43,7 +43,7 @@ public class PropertyServiceImpl implements PropertyService {
     @Override
     public Page<PropertyCard> getAllCardsWithFilters(List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
                                                      List<UUID> propertyTypeIds, UUID ownerId,
-                                                     BigDecimal minPrice, BigDecimal maxPrice, BigDecimal totalArea,
+                                                     BigDecimal minPrice, BigDecimal maxPrice, BigDecimal minArea, BigDecimal maxArea,
                                                      Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors,
                                                      String houseOrientation, String balconyOrientation, String transactionType,
                                                      List<String> statuses, boolean topK,
@@ -76,7 +76,8 @@ public class PropertyServiceImpl implements PropertyService {
                 ownerId,
                 minPrice,
                 maxPrice,
-                totalArea,
+                minArea,
+                maxArea,
                 rooms,
                 bathrooms,
                 bedrooms,

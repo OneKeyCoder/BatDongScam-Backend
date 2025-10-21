@@ -15,7 +15,7 @@ public interface PropertyService {
     Page<Property> getAll(Pageable pageable);
     Page<PropertyCard> getAllCardsWithFilters(List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
                                               List<UUID> propertyTypeIds, UUID ownerId,
-                                              BigDecimal minPrice, BigDecimal maxPrice, BigDecimal totalArea,
+                                              BigDecimal minPrice, BigDecimal maxPrice, BigDecimal minArea, BigDecimal maxArea,
                                               Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors, String houseOrientation, String balconyOrientation,
                                               String transactionType, List<String> statuses, boolean topK,
                                               Pageable pageable);

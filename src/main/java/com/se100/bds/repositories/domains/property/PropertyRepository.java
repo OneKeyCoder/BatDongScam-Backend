@@ -68,7 +68,8 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         AND (:ownerId IS NULL OR po.id = :ownerId)
         AND (:minPrice IS NULL OR p.priceAmount >= :minPrice)
         AND (:maxPrice IS NULL OR p.priceAmount <= :maxPrice)
-        AND (:totalArea IS NULL OR p.area >= :totalArea)
+        AND (:minArea IS NULL OR p.area >= :minArea)
+        AND (:maxArea IS NULL OR p.area <= :maxArea)
         AND (:rooms IS NULL OR p.rooms = :rooms)
         AND (:bathrooms IS NULL OR p.bathrooms = :bathrooms)
         AND (:bedrooms IS NULL OR p.bedrooms = :bedrooms)
@@ -88,7 +89,8 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
             @Param("ownerId")  UUID ownerId,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
-            @Param("totalArea") BigDecimal totalArea,
+            @Param("minArea") BigDecimal minArea,
+            @Param("maxArea") BigDecimal maxArea,
             @Param("rooms") Integer rooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("bedrooms") Integer bedrooms,
@@ -192,4 +194,3 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
 
     List<Property> findAllByAssignedAgent_Id(UUID assignedAgentId);
 }
-

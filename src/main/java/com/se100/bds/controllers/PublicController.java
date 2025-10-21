@@ -229,8 +229,11 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "Maximum price")
             @RequestParam(required = false) BigDecimal maxPrice,
 
-            @Parameter(description = "Minimum total area (square meters)")
-            @RequestParam(required = false) BigDecimal totalArea,
+            @Parameter(description = "Minimum area (square meters)")
+            @RequestParam(required = false) BigDecimal minArea,
+
+            @Parameter(description = "Maximum area (square meters)")
+            @RequestParam(required = false) BigDecimal maxArea,
 
             @Parameter(description = "Number of rooms")
             @RequestParam(required = false) Integer rooms,
@@ -268,7 +271,8 @@ public class PublicController extends AbstractBaseController {
                 ownerId,
                 minPrice,
                 maxPrice,
-                totalArea,
+                minArea,
+                maxArea,
                 rooms,
                 bathrooms,
                 bedrooms,
