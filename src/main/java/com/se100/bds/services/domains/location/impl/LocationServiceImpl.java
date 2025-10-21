@@ -31,13 +31,24 @@ public class LocationServiceImpl implements LocationService {
 
 
     @Override
-    public Page<City> topKCities(Pageable pageable, int topK) {
+    public Page<City> topMostSearchedCities(Pageable pageable) {
         // Lấy tháng và năm hiện tại
         int currentYear = java.time.LocalDateTime.now().getYear();
         int currentMonth = java.time.LocalDateTime.now().getMonthValue();
 
-        List<UUID> topKCityIds = searchService.topKSearchByUser(null, topK, Constants.SearchTypeEnum.CITY, currentYear, currentMonth);
-        return cityRepository.findAllByIdIn(topKCityIds, pageable);
+        // Lấy offset và limit từ Pageable
+        int offset = (int) pageable.getOffset();
+        int limit = pageable.getPageSize();
+
+        List<UUID> topCityIds = searchService.topMostSearchByUser(
+                null,
+                offset,
+                limit,
+                Constants.SearchTypeEnum.CITY,
+                currentYear,
+                currentMonth
+        );
+        return cityRepository.findAllByIdIn(topCityIds, pageable);
     }
 
     @Override

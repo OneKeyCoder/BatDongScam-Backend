@@ -4,8 +4,7 @@ import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.util.Map;
-import java.util.UUID;
+import java.util.List;
 
 @Document(collection = "property_statistic_reports")
 @Builder
@@ -30,44 +29,44 @@ public class PropertyStatisticsReport extends AbstractBaseMongoReport {
     private Integer totalRentedPropertiesCurrentDay;
 
     @Field("searched_cities_month")
-    private Map<UUID, Integer> searchedCitiesMonth;
+    private List<RankedItem> searchedCitiesMonth;
 
     @Field("searched_cities")
-    private Map<UUID, Integer> searchedCities;
+    private List<RankedItem> searchedCities;
 
     @Field("favorite_cities")
-    private Map<UUID, Integer> favoriteCities;
+    private List<RankedItem> favoriteCities;
 
     @Field("searched_districts_month")
-    private Map<UUID, Integer> searchedDistrictsMonth;
+    private List<RankedItem> searchedDistrictsMonth;
 
     @Field("searched_districts")
-    private Map<UUID, Integer> searchedDistricts;
+    private List<RankedItem> searchedDistricts;
 
     @Field("favorite_districts")
-    private Map<UUID, Integer> favoriteDistricts;
+    private List<RankedItem> favoriteDistricts;
 
     @Field("searched_wards_month")
-    private Map<UUID, Integer> searchedWardsMonth;
+    private List<RankedItem> searchedWardsMonth;
 
     @Field("searched_wards")
-    private Map<UUID, Integer> searchedWards;
+    private List<RankedItem> searchedWards;
 
     @Field("favorite_wards")
-    private Map<UUID, Integer> favoriteWards;
+    private List<RankedItem> favoriteWards;
 
     @Field("searched_property_types_month")
-    private Map<UUID, Integer> searchedPropertyTypesMonth;
+    private List<RankedItem> searchedPropertyTypesMonth;
 
     @Field("searched_property_types")
-    private Map<UUID, Integer> searchedPropertyTypes;
+    private List<RankedItem> searchedPropertyTypes;
 
     @Field("favorite_property_types")
-    private Map<UUID, Integer> favoritePropertyTypes;
+    private List<RankedItem> favoritePropertyTypes;
 
     @Field("searched_properties_month")
-    private Map<UUID, Integer> searchedPropertiesMonth;
+    private List<RankedItem> searchedPropertiesMonth;
 
     @Field("searched_properties")
-    private Map<UUID, Integer> searchedProperties;
+    private List<RankedItem> searchedProperties;
 }

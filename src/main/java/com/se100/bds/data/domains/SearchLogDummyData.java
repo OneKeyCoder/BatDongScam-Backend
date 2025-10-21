@@ -9,6 +9,7 @@ import com.se100.bds.models.entities.user.User;
 import com.se100.bds.models.schemas.customer.CustomerFavoriteProperty;
 import com.se100.bds.models.schemas.report.BaseReportData;
 import com.se100.bds.models.schemas.report.PropertyStatisticsReport;
+import com.se100.bds.models.schemas.report.RankedItem;
 import com.se100.bds.models.schemas.search.SearchLog;
 import com.se100.bds.repositories.domains.location.CityRepository;
 import com.se100.bds.repositories.domains.location.DistrictRepository;
@@ -20,6 +21,7 @@ import com.se100.bds.repositories.domains.property.PropertyRepository;
 import com.se100.bds.repositories.domains.property.PropertyTypeRepository;
 import com.se100.bds.repositories.domains.user.UserRepository;
 import com.se100.bds.utils.Constants;
+import com.se100.bds.utils.ReportHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -140,8 +142,12 @@ public class SearchLogDummyData {
             Map<UUID, UUID> districtToCityMap,
             Map<UUID, UUID> wardToDistrictMap
     ) {
-        int totalLogs = 100000;
-        int batchSize = 5000;
+        // for production
+//        int totalLogs = 100000;
+//        int batchSize = 5000;
+
+        int totalLogs = 1000;
+        int batchSize = 500;
         int batches = totalLogs / batchSize;
 
         for (int batch = 0; batch < batches; batch++) {
@@ -354,20 +360,20 @@ public class SearchLogDummyData {
             .totalSoldPropertiesCurrentDay(totalSoldPropertiesCurrentDay)
             .totalRentedPropertiesCurrentMonth(totalRentedPropertiesCurrentMonth)
             .totalRentedPropertiesCurrentDay(totalRentedPropertiesCurrentDay)
-            .searchedCitiesMonth(searchedCitiesMonth)
-            .searchedCities(searchedCities)
-            .favoriteCities(favoriteCities)
-            .searchedDistrictsMonth(searchedDistrictsMonth)
-            .searchedDistricts(searchedDistricts)
-            .favoriteDistricts(favoriteDistricts)
-            .searchedWardsMonth(searchedWardsMonth)
-            .searchedWards(searchedWards)
-            .favoriteWards(favoriteWards)
-            .searchedPropertyTypesMonth(searchedPropertyTypesMonth)
-            .searchedPropertyTypes(searchedPropertyTypes)
-            .favoritePropertyTypes(favoritePropertyTypes)
-            .searchedPropertiesMonth(searchedPropertiesMonth)
-            .searchedProperties(searchedProperties)
+            .searchedCitiesMonth(convertToSortedRankedList(searchedCitiesMonth))
+            .searchedCities(convertToSortedRankedList(searchedCities))
+            .favoriteCities(convertToSortedRankedList(favoriteCities))
+            .searchedDistrictsMonth(convertToSortedRankedList(searchedDistrictsMonth))
+            .searchedDistricts(convertToSortedRankedList(searchedDistricts))
+            .favoriteDistricts(convertToSortedRankedList(favoriteDistricts))
+            .searchedWardsMonth(convertToSortedRankedList(searchedWardsMonth))
+            .searchedWards(convertToSortedRankedList(searchedWards))
+            .favoriteWards(convertToSortedRankedList(favoriteWards))
+            .searchedPropertyTypesMonth(convertToSortedRankedList(searchedPropertyTypesMonth))
+            .searchedPropertyTypes(convertToSortedRankedList(searchedPropertyTypes))
+            .favoritePropertyTypes(convertToSortedRankedList(favoritePropertyTypes))
+            .searchedPropertiesMonth(convertToSortedRankedList(searchedPropertiesMonth))
+            .searchedProperties(convertToSortedRankedList(searchedProperties))
             .build();
 
         report.setBaseReportData(baseReportData);
@@ -377,6 +383,15 @@ public class SearchLogDummyData {
         propertyStatisticsReportRepository.save(report);
 
         log.info("PropertyStatisticsReport created for {}-{}", year, month);
+    }
+
+    /**
+     * Convert Map<UUID, Integer> to List<RankedItem> sorted by count DESC
+     * This pre-sorts data so queries can use O(k) subList() instead of O(n log n) sorting
+     */
+    private List<RankedItem> convertToSortedRankedList(Map<UUID, Integer> countMap) {
+        // Sử dụng helper utility để tái sử dụng logic
+        return ReportHelper.convertToSortedRankedList(countMap);
     }
 
     private <T> Map<UUID, Integer> countByField(List<SearchLog> logs, java.util.function.Function<SearchLog, UUID> fieldExtractor) {

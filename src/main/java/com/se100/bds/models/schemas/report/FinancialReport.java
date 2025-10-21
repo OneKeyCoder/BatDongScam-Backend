@@ -5,8 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.math.BigDecimal;
-import java.util.Map;
-import java.util.UUID;
+import java.util.List;
 
 @Document(collection = "financial_reports")
 @Builder
@@ -49,38 +48,38 @@ public class FinancialReport extends AbstractBaseMongoReport {
     private BigDecimal avgRatingCurrentMonth;
 
     @Field("revenue_cities")
-    private Map<UUID, BigDecimal> revenueCities;
+    private List<RankedRevenueItem> revenueCities;
 
     @Field("revenue_cities_current_month")
-    private Map<UUID, BigDecimal> revenueCitiesCurrentMonth;
+    private List<RankedRevenueItem> revenueCitiesCurrentMonth;
 
     @Field("revenue_districts")
-    private Map<UUID, BigDecimal> revenueDistricts;
+    private List<RankedRevenueItem> revenueDistricts;
 
     @Field("revenue_districts_current_month")
-    private Map<UUID, BigDecimal> revenueDistrictsCurrentMonth;
+    private List<RankedRevenueItem> revenueDistrictsCurrentMonth;
 
     @Field("revenue_wards")
-    private Map<UUID, BigDecimal> revenueWards;
+    private List<RankedRevenueItem> revenueWards;
 
     @Field("revenue_wards_current_month")
-    private Map<UUID, BigDecimal> revenueWardsCurrentMonth;
+    private List<RankedRevenueItem> revenueWardsCurrentMonth;
 
     @Field("revenue_property_types")
-    private Map<UUID, BigDecimal> revenuePropertyTypes;
+    private List<RankedRevenueItem> revenuePropertyTypes;
 
     @Field("revenue_property_types_current_month")
-    private Map<UUID, BigDecimal> revenuePropertyTypesCurrentMonth;
+    private List<RankedRevenueItem> revenuePropertyTypesCurrentMonth;
 
     @Field("revenue_sales_agents")
-    private Map<UUID, BigDecimal> revenueSalesAgents;
+    private List<RankedRevenueItem> revenueSalesAgents;
 
     @Field("revenue_sales_agents_current_month")
-    private Map<UUID, BigDecimal> revenueSalesAgentsCurrentMonth;
+    private List<RankedRevenueItem> revenueSalesAgentsCurrentMonth;
 
     @Field("sale_agents_salary_month")
-    private Map<UUID, BigDecimal> saleAgentsSalaryMonth;
+    private List<RankedRevenueItem> saleAgentsSalaryMonth;
 
     @Field("sale_agents_salary_career")
-    private Map<UUID, BigDecimal> saleAgentsSalaryCareer;
+    private List<RankedRevenueItem> saleAgentsSalaryCareer;
 }

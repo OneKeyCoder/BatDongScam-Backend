@@ -9,6 +9,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface LocationService {
-    Page<City> topKCities(Pageable pageable, int topK);
+    Page<City> topMostSearchedCities(Pageable pageable);
     Map<UUID, String> findAllByParents(UUID parentId, Constants.SearchTypeEnum searchTypeEnum);
 }

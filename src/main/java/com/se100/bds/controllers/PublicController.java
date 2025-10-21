@@ -350,18 +350,15 @@ public class PublicController extends AbstractBaseController {
             @RequestParam(defaultValue = "1") int page,
 
             @Parameter(description = "Number of items per page")
-            @RequestParam(defaultValue = "10") int limit,
-
-            @Parameter(description = "Number of top cities to retrieve (K)", example = "10")
-            @RequestParam(defaultValue = "10") int topK
+            @RequestParam(defaultValue = "10") int limit
     ) {
-        log.info("Getting top {} cities - page: {}, limit: {}", topK, page, limit);
+        log.info("Getting top most searched cities - page: {}, limit: {}", page, limit);
 
         Pageable pageable = createPageable(page, limit, null, null);
-        Page<City> topCities = locationService.topKCities(pageable, topK);
+        Page<City> topCities = locationService.topMostSearchedCities(pageable);
         Page<CityResponse> cityResponses = locationMapper.mapToPage(topCities, CityResponse.class);
 
-        return responseFactory.successPage(cityResponses, "Top cities retrieved successfully");
+        return responseFactory.successPage(cityResponses, "Top most searched cities retrieved successfully");
     }
 
     @GetMapping("/locations/children")
