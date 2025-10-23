@@ -27,6 +27,9 @@ public class IndividualSalesAgentPerformanceCareer extends AbstractBaseMongoSche
     @Field("properties_assigned")
     private Integer propertiesAssigned;
 
+    @Field("appointment_assigned")
+    private Integer appointmentAssigned;
+
     @Field("appointment_completed")
     private Integer appointmentCompleted;
 

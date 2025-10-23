@@ -63,6 +63,9 @@ public class Contract extends AbstractBaseEntity {
     @Column(name = "cancellation_penalty", nullable = false, precision = 15, scale = 2)
     private BigDecimal cancellationPenalty;
 
+    @Column(name = "cancelled_by", nullable = false)
+    private Constants.RoleEnum cancelledBy;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "contract_payment_type", nullable = false)
     private Constants.ContractPaymentTypeEnum contractPaymentType;

@@ -40,8 +40,11 @@ public class IndividualSalesAgentPerformanceMonth extends AbstractBaseMongoSchem
     @Field("month_properties_assigned")
     private Integer monthPropertiesAssigned;
 
-    @Field("month_appointment_completed")
-    private Integer monthAppointmentCompleted;
+    @Field("month_appointments_assigned")
+    private Integer monthAppointmentsAssigned;
+
+    @Field("month_appointments_completed")
+    private Integer monthAppointmentsCompleted;
 
     @Field("month_contracts")
     private Integer monthContracts;

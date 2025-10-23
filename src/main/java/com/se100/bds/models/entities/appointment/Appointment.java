@@ -4,6 +4,7 @@ import com.se100.bds.models.entities.AbstractBaseEntity;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.user.Customer;
 import com.se100.bds.models.entities.user.SaleAgent;
+import com.se100.bds.utils.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -39,7 +40,7 @@ public class Appointment extends AbstractBaseEntity {
     private LocalDateTime confirmedDate;
 
     @Column(name = "status")
-    private String status;
+    private Constants.AppointmentStatusEnum status;
 
     @Column(name = "customer_requirements", columnDefinition = "TEXT")
     private String customerRequirements;
@@ -52,6 +53,15 @@ public class Appointment extends AbstractBaseEntity {
 
     @Column(name = "customer_interest_level")
     private String customerInterestLevel;
+
+    @Column(name = "cancelled_at", nullable = false)
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancelled_by", nullable = false)
+    private Constants.RoleEnum cancelledBy;
+
+    @Column(name = "cancelled_reason", nullable = false)
+    private String cancelledReason;
 
     @Column(name = "rating")
     private Short rating;
