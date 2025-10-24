@@ -96,7 +96,6 @@ public class PropertyDummyData {
                     .mediaList(new ArrayList<>())
                     .appointments(new ArrayList<>())
                     .contracts(new ArrayList<>())
-                    .violations(new ArrayList<>())
                     .documents(new ArrayList<>())
                     .build();
 

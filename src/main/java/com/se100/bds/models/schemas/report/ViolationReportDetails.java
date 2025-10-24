@@ -4,6 +4,8 @@ import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.util.List;
+
 @Document(collection = "violation_report_details")
 @Builder
 @Getter
@@ -25,4 +27,7 @@ public class ViolationReportDetails extends AbstractBaseMongoReport {
 
     @Field("properties_removed")
     private Integer propertiesRemoved;
+
+    @Field("violation_type_counts")
+    private List<RankedItem> violationTypeCounts;
 }

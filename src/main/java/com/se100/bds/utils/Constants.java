@@ -347,6 +347,64 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum ViolationReportedTypeEnum {
+        CUSTOMER("CUSTOMER"),
+        PROPERTY("PROPERTY"),
+        SALES_AGENT("SALES_AGENT"),
+        PROPERTY_OWNER("PROPERTY_OWNER"),;
+
+        private final String value;
+
+        public static ViolationReportedTypeEnum get(final String name) {
+            return Stream.of(ViolationReportedTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid violation reported type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ViolationTypeEnum {
+        FRAUDULENT_LISTING("FRAUDULENT_LISTING"),
+        MISREPRESENTATION_OF_PROPERTY("MISREPRESENTATION_OF_PROPERTY"),
+        SPAM_OR_DUPLICATE_LISTING("SPAM_OR_DUPLICATE_LISTING"),
+        INAPPROPRIATE_CONTENT("INAPPROPRIATE_CONTENT"),
+        NON_COMPLIANCE_WITH_TERMS("NON_COMPLIANCE_WITH_TERMS"),
+        FAILURE_TO_DISCLOSE_INFORMATION("FAILURE_TO_DISCLOSE_INFORMATION"),
+        HARASSMENT("HARASSMENT"),
+        SCAM_ATTEMPT("SCAM_ATTEMPT");
+
+        private final String value;
+
+        public static ViolationTypeEnum get(final String name) {
+            return Stream.of(ViolationTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid violation type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ViolationStatusEnum {
+        REPORTED("REPORTED"),
+        UNDER_REVIEW("UNDER_REVIEW"),
+        RESOLVED("RESOLVED"),
+        DISMISSED("DISMISSED");
+
+        private final String value;
+
+        public static ViolationStatusEnum get(final String name) {
+            return Stream.of(ViolationStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid violation status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum PropertyStatusEnum {
         PENDING("PENDING"),
         REJECTED("REJECTED"),

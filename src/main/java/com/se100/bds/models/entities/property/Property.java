@@ -131,10 +131,5 @@ public class Property extends AbstractBaseEntity {
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     @JsonIgnore
-    private List<ViolationReport> violations = new ArrayList<>();
-
-    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    @JsonIgnore
     private List<IdentificationDocument> documents = new ArrayList<>();
 }

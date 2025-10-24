@@ -1,9 +1,9 @@
 package com.se100.bds.data.domains;
 
+import com.se100.bds.models.entities.property.Media;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.models.entities.violation.ViolationReport;
-import com.se100.bds.models.schemas.report.BaseReportData;
 import com.se100.bds.models.schemas.report.ViolationReportDetails;
 import com.se100.bds.repositories.domains.mongo.report.ViolationReportDetailsRepository;
 import com.se100.bds.repositories.domains.property.PropertyRepository;
@@ -49,38 +49,62 @@ public class ViolationDummyData {
 
         List<ViolationReport> violations = new ArrayList<>();
 
-        // Create 20 violation reports (small number, as violations should be rare)
-        for (int i = 0; i < 20; i++) {
-            User user = users.get(random.nextInt(users.size()));
-            Property property = !properties.isEmpty() && random.nextBoolean()
-                    ? properties.get(random.nextInt(properties.size()))
-                    : null;
+        Constants.ViolationTypeEnum[] violationTypes = Constants.ViolationTypeEnum.values();
+        Constants.ViolationStatusEnum[] statuses = Constants.ViolationStatusEnum.values();
 
-            String[] violationTypes = {
-                    "Fraudulent Listing",
-                    "Misrepresentation of Property",
-                    "Spam or Duplicate Listing",
-                    "Inappropriate Content",
-                    "Non-compliance with Terms",
-                    "Failure to Disclose Information"
-            };
+        // Create 50 violation reports (mix of properties and users)
+        for (int i = 0; i < 50; i++) {
+            // Randomly choose what to report: PROPERTY (60%), CUSTOMER (20%), or PROPERTY_OWNER (20%)
+            Constants.ViolationReportedTypeEnum reportedType;
+            Object reportedEntity;
 
-            String[] severities = {"MINOR", "MODERATE", "SERIOUS", "CRITICAL"};
-            String[] statuses = {"REPORTED", "UNDER_REVIEW", "RESOLVED", "DISMISSED"};
+            double rand = random.nextDouble();
+            if (rand < 0.6 && !properties.isEmpty()) {
+                // Report a property
+                reportedType = Constants.ViolationReportedTypeEnum.PROPERTY;
+                reportedEntity = properties.get(random.nextInt(properties.size()));
+            } else {
+                // Report a user (customer or property owner)
+                User reportedUser = users.get(random.nextInt(users.size()));
+                if (reportedUser.getRole() == Constants.RoleEnum.CUSTOMER) {
+                    reportedType = Constants.ViolationReportedTypeEnum.CUSTOMER;
+                } else if (reportedUser.getRole() == Constants.RoleEnum.PROPERTY_OWNER) {
+                    reportedType = Constants.ViolationReportedTypeEnum.PROPERTY_OWNER;
+                } else if (reportedUser.getRole() == Constants.RoleEnum.SALESAGENT) {
+                    reportedType = Constants.ViolationReportedTypeEnum.SALES_AGENT;
+                } else {
+                    // Default to customer if role doesn't match
+                    reportedType = Constants.ViolationReportedTypeEnum.CUSTOMER;
+                }
+                reportedEntity = reportedUser;
+            }
 
-            String violationType = violationTypes[random.nextInt(violationTypes.length)];
-            String severity = severities[random.nextInt(severities.length)];
-            String status = statuses[random.nextInt(statuses.length)];
+            // Random reporter (can be null for anonymous reports)
+            User reporter = random.nextBoolean() ? users.get(random.nextInt(users.size())) : null;
+
+            Constants.ViolationTypeEnum violationType = violationTypes[random.nextInt(violationTypes.length)];
+            Constants.ViolationStatusEnum status = statuses[random.nextInt(statuses.length)];
 
             ViolationReport violation = ViolationReport.builder()
-                    .user(user)
-                    .property(property)
+                    .user(reporter)
+                    .relatedEntityType(reportedType)
+                    .relatedEntityId(reportedType == Constants.ViolationReportedTypeEnum.PROPERTY
+                            ? ((Property) reportedEntity).getId()
+                            : ((User) reportedEntity).getId())
                     .violationType(violationType)
-                    .description(generateViolationDescription(violationType))
+                    .description(generateViolationDescription(violationType, reportedType))
                     .status(status)
-                    .resolutionNotes(status.equals("RESOLVED") ? generateResolutionNotes() : null)
-                    .resolvedAt(status.equals("RESOLVED") ? LocalDateTime.now().minusDays(random.nextInt(30)) : null)
+                    .resolutionNotes(status == Constants.ViolationStatusEnum.RESOLVED ? generateResolutionNotes() : null)
+                    .resolvedAt(status == Constants.ViolationStatusEnum.RESOLVED ? LocalDateTime.now().minusDays(random.nextInt(30)) : null)
+                    .mediaList(new ArrayList<>())
                     .build();
+
+            // Add evidence media to violation report (1-5 images/videos)
+            int mediaCount = 1 + random.nextInt(5); // 1-5 media files
+            for (int j = 0; j < mediaCount; j++) {
+                Media media = createViolationEvidenceMedia(violation, j);
+                violation.getMediaList().add(media);
+            }
 
             violations.add(violation);
         }
@@ -89,20 +113,26 @@ public class ViolationDummyData {
         log.info("Saved {} violation reports to database", violations.size());
     }
 
-    private String generateViolationDescription(String violationType) {
+    private String generateViolationDescription(Constants.ViolationTypeEnum violationType, Constants.ViolationReportedTypeEnum reportedType) {
+        String entityType = reportedType == Constants.ViolationReportedTypeEnum.PROPERTY ? "property" : "user";
+
         switch (violationType) {
-            case "Fraudulent Listing":
-                return "Property listing contains false information and misleading claims.";
-            case "Misrepresentation of Property":
+            case FRAUDULENT_LISTING:
+                return "This " + entityType + " contains false information and misleading claims.";
+            case MISREPRESENTATION_OF_PROPERTY:
                 return "Property details do not match the actual condition or specifications.";
-            case "Spam or Duplicate Listing":
+            case SPAM_OR_DUPLICATE_LISTING:
                 return "Multiple identical listings posted for the same property.";
-            case "Inappropriate Content":
-                return "Listing contains inappropriate images or offensive language.";
-            case "Non-compliance with Terms":
+            case INAPPROPRIATE_CONTENT:
+                return "This " + entityType + " contains inappropriate images or offensive language.";
+            case NON_COMPLIANCE_WITH_TERMS:
                 return "User violated platform terms and conditions.";
-            case "Failure to Disclose Information":
-                return "Critical property information was not disclosed to potential buyers.";
+            case FAILURE_TO_DISCLOSE_INFORMATION:
+                return "Critical information was not disclosed properly.";
+            case HARASSMENT:
+                return "User engaged in harassment or abusive behavior towards other users.";
+            case SCAM_ATTEMPT:
+                return "Suspected scam or fraudulent activity detected.";
             default:
                 return "Violation of platform policies.";
         }
@@ -119,11 +149,44 @@ public class ViolationDummyData {
         return notes[random.nextInt(notes.length)];
     }
 
+    private Media createViolationEvidenceMedia(ViolationReport violation, int index) {
+        // 70% images, 30% videos for evidence
+        Constants.MediaTypeEnum mediaType = random.nextDouble() < 0.7
+                ? Constants.MediaTypeEnum.IMAGE
+                : Constants.MediaTypeEnum.VIDEO;
+
+        String fileName;
+        String filePath;
+        String mimeType;
+
+        if (mediaType == Constants.MediaTypeEnum.IMAGE) {
+            fileName = "violation_evidence_" + violation.getId() + "_" + (index + 1) + ".jpg";
+            filePath = "https://res.cloudinary.com/bds-platform/image/upload/violations/" + violation.getId() + "/" + fileName;
+            mimeType = "image/jpeg";
+        } else {
+            fileName = "violation_evidence_" + violation.getId() + "_" + (index + 1) + ".mp4";
+            filePath = "https://res.cloudinary.com/bds-platform/video/upload/violations/" + violation.getId() + "/" + fileName;
+            mimeType = "video/mp4";
+        }
+
+        return Media.builder()
+                .violationReport(violation)
+                .mediaType(mediaType)
+                .fileName(fileName)
+                .filePath(filePath)
+                .mimeType(mimeType)
+                .documentType(null) // Not a document, it's evidence (image/video)
+                .build();
+    }
+
     private void createDummyViolationReportDetails() {
         log.info("Creating dummy violation report details");
 
         YearMonth currentMonth = YearMonth.now();
         List<ViolationReportDetails> reportDetailsList = new ArrayList<>();
+
+        // Violation types for tracking
+        Constants.ViolationTypeEnum[] violationTypes = Constants.ViolationTypeEnum.values();
 
         // Create reports for the last 22 months
         for (int i = 0; i < 22; i++) {
@@ -138,8 +201,27 @@ public class ViolationDummyData {
             int accountsSuspended = random.nextInt(8); // 0-7 accounts suspended
             int propertiesRemoved = random.nextInt(12); // 0-11 properties removed
 
+            // Generate violation type counts with RankedItem
+            List<com.se100.bds.models.schemas.report.RankedItem> violationTypeCounts = new ArrayList<>();
+            for (Constants.ViolationTypeEnum violationType : violationTypes) {
+                // Generate random count for each violation type (0-15)
+                int count = random.nextInt(16);
+                if (count > 0) { // Only add if there are violations of this type
+                    // We use a deterministic UUID based on violation type name for consistency
+                    violationTypeCounts.add(
+                            com.se100.bds.models.schemas.report.RankedItem.builder()
+                                    .id(java.util.UUID.nameUUIDFromBytes(violationType.name().getBytes()))
+                                    .count(count)
+                                    .build()
+                    );
+                }
+            }
+
+            // Sort by count descending
+            violationTypeCounts.sort((a, b) -> b.getCount().compareTo(a.getCount()));
+
             // Create base report data
-            BaseReportData baseReportData = new BaseReportData();
+            com.se100.bds.models.schemas.report.BaseReportData baseReportData = new com.se100.bds.models.schemas.report.BaseReportData();
             baseReportData.setReportType(Constants.ReportTypeEnum.VIOLATION);
             baseReportData.setMonth(month);
             baseReportData.setYear(year);
@@ -158,13 +240,14 @@ public class ViolationDummyData {
                     .avgResolutionTimeHours(avgResolutionTime)
                     .accountsSuspended(accountsSuspended)
                     .propertiesRemoved(propertiesRemoved)
+                    .violationTypeCounts(violationTypeCounts)
                     .build();
 
             reportDetails.setBaseReportData(baseReportData);
             reportDetailsList.add(reportDetails);
 
-            log.info("Created violation report for {}/{}: {} total violations, {} avg resolution hours, {} accounts suspended, {} properties removed",
-                    month, year, totalViolations, avgResolutionTime, accountsSuspended, propertiesRemoved);
+            log.info("Created violation report for {}/{}: {} total violations, {} violation types, {} avg resolution hours, {} accounts suspended, {} properties removed",
+                    month, year, totalViolations, violationTypeCounts.size(), avgResolutionTime, accountsSuspended, propertiesRemoved);
         }
 
         violationReportDetailsRepository.saveAll(reportDetailsList);

@@ -71,7 +71,4 @@ public class User extends AbstractBaseEntity {
     @Builder.Default
     private List<Notification> notifications = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<ViolationReport> violations = new ArrayList<>();
 }

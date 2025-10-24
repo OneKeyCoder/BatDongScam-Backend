@@ -69,7 +69,6 @@ public class PropertyOwnerDummyData {
                 .avatarUrl(null)
                 .lastLoginAt(null)
                 .notifications(new ArrayList<>())
-                .violations(new ArrayList<>())
                 .build();
     }
 

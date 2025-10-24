@@ -1,12 +1,17 @@
 package com.se100.bds.models.entities.violation;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
-import com.se100.bds.models.entities.property.Property;
+import com.se100.bds.models.entities.property.Media;
 import com.se100.bds.models.entities.user.User;
+import com.se100.bds.utils.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "violation_reports")
@@ -23,22 +28,32 @@ public class ViolationReport extends AbstractBaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id")
-    private Property property;
+    @Column(name = "related_entity_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Constants.ViolationReportedTypeEnum relatedEntityType;
+
+    @Column(name = "related_entity_id", nullable = false)
+    private UUID relatedEntityId;
 
     @Column(name = "violation_type", nullable = false)
-    private String violationType;
+    @Enumerated(EnumType.STRING)
+    private Constants.ViolationTypeEnum violationType;
 
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "status")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private Constants.ViolationStatusEnum status;
 
     @Column(name = "resolution_notes", columnDefinition = "TEXT")
     private String resolutionNotes;
 
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
+
+    @OneToMany(mappedBy = "violationReport", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @JsonIgnore
+    private List<Media> mediaList = new ArrayList<>();
 }

@@ -54,13 +54,13 @@ public class Appointment extends AbstractBaseEntity {
     @Column(name = "customer_interest_level")
     private String customerInterestLevel;
 
-    @Column(name = "cancelled_at", nullable = false)
+    @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    @Column(name = "cancelled_by", nullable = false)
+    @Column(name = "cancelled_by")
     private Constants.RoleEnum cancelledBy;
 
-    @Column(name = "cancelled_reason", nullable = false)
+    @Column(name = "cancelled_reason")
     private String cancelledReason;
 
     @Column(name = "rating")

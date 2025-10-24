@@ -2,6 +2,7 @@ package com.se100.bds.models.entities.property;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.se100.bds.models.entities.AbstractBaseEntity;
+import com.se100.bds.models.entities.violation.ViolationReport;
 import com.se100.bds.utils.Constants;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,9 +19,14 @@ import lombok.*;
 })
 public class Media extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id", nullable = false)
+    @JoinColumn(name = "property_id", nullable = true)
     @JsonIgnore
     private Property property;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "report_id", nullable = true)
+    @JsonIgnore
+    private ViolationReport violationReport;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", nullable = false)
