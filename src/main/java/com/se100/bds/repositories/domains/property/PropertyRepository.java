@@ -23,9 +23,9 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         SELECT new com.se100.bds.repositories.dtos.PropertyCardProtection (
             p.id,
             p.title,
-            (SELECT m.filePath FROM Media m WHERE m.property.id = p.id ORDER BY m.createdAt ASC LIMIT 1),
+            MIN(m.filePath),
             false,
-            COALESCE((SELECT CAST(COUNT(m.id) AS int) FROM Media m WHERE m.property.id = p.id), 0),
+            COALESCE(CAST(COUNT(DISTINCT m.id) AS int), 0),
             p.fullAddress,
             d.districtName,
             c.cityName,
@@ -37,6 +37,8 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         JOIN Ward w ON p.ward.id = w.id
         JOIN District d ON w.district.id = d.id
         JOIN City c ON d.city.id = c.id
+        LEFT JOIN Media m ON m.property.id = p.id
+        GROUP BY p.id, p.title, p.fullAddress, d.districtName, c.cityName, p.status, p.priceAmount, p.area
     """)
     Page<PropertyCardProtection> findAllPropertyCards(Pageable pageable);
 
@@ -44,9 +46,9 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     SELECT new com.se100.bds.repositories.dtos.PropertyCardProtection (
         p.id,
         p.title,
-        (SELECT m2.filePath FROM Media m2 WHERE m2.property.id = p.id ORDER BY m2.createdAt ASC LIMIT 1),
+        MIN(m.filePath),
         false,
-        COALESCE((SELECT CAST(COUNT(m2.id) AS int) FROM Media m2 WHERE m2.property.id = p.id), 0),
+        COALESCE(CAST(COUNT(DISTINCT m.id) AS int), 0),
         p.fullAddress,
         d.districtName,
         c.cityName,
@@ -59,6 +61,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     JOIN District d ON w.district.id = d.id
     JOIN City c ON d.city.id = c.id
     LEFT JOIN PropertyOwner po ON p.owner.id = po.id
+    LEFT JOIN Media m ON m.property.id = p.id
     WHERE
         (COALESCE(:propertyIds, NULL) IS NULL OR p.id IN :propertyIds)
         AND (COALESCE(:cityIds, NULL) IS NULL OR c.id IN :cityIds)
@@ -78,6 +81,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         AND (:balconyOrientation IS NULL OR CAST(p.balconyOrientation AS string) = :balconyOrientation)
         AND (:transactionType IS NULL OR CAST(p.transactionType AS string) = :transactionType)
         AND (:statuses IS NULL OR CAST(p.status AS string) IN :statuses)
+    GROUP BY p.id, p.title, p.fullAddress, d.districtName, c.cityName, p.status, p.priceAmount, p.area
     """)
     Page<PropertyCardProtection> findAllPropertyCardsWithFilter(
             Pageable pageable,
