@@ -33,9 +33,6 @@ public class ViolationReport extends AbstractBaseEntity {
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "severity")
-    private String severity;
-
     @Column(name = "status")
     private String status;
 

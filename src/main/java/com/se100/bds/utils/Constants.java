@@ -356,6 +356,7 @@ public final class Constants {
         RENTED("RENTED"),
         AVAILABLE("AVAILABLE"),
         UNAVAILABLE("UNAVAILABLE"),
+        REMOVED("REMOVED"), // Due to violation reported
         DELETED("DELETED");
 
         private final String value;
