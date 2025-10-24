@@ -46,7 +46,7 @@ public class Payment extends AbstractBaseEntity {
     private String transactionReference;
 
     @Column(name = "status")
-    private String status;
+    private Constants.PaymentStatusEnum status;
 
     @Column(name = "overdue_days")
     private Integer overdueDays;

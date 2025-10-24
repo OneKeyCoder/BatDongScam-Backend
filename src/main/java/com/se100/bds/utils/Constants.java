@@ -2,6 +2,7 @@ package com.se100.bds.utils;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.stream.Stream;
 
@@ -191,6 +192,23 @@ public final class Constants {
 
         public static PaymentTypeEnum get(final String name) {
             return Stream.of(PaymentTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum PaymentStatusEnum {
+        PENDING("PENDING"),
+        SUCCESS("SUCCESS"),
+        FAILED("FAILED");
+
+        private final String value;
+
+        public static PaymentStatusEnum get(final String name) {
+            return Stream.of(PaymentStatusEnum.values())
                     .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment type name: %s", name)));
