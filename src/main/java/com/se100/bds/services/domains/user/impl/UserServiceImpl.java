@@ -2,6 +2,7 @@ package com.se100.bds.services.domains.user.impl;
 
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
+import com.se100.bds.dtos.responses.user.propertyprofile.CustomerPropertyProfileResponse;
 import com.se100.bds.dtos.responses.user.propertyprofile.PropertyOwnerPropertyProfileResponse;
 import com.se100.bds.dtos.responses.user.otherprofile.UserProfileResponse;
 import com.se100.bds.mappers.UserMapper;
@@ -105,11 +106,79 @@ public class UserServiceImpl implements UserService {
                 User user = userRepository.findByIdWithLocation(UUID.fromString(getPrincipal(authentication).getId()))
                         .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + UUID.fromString(getPrincipal(authentication).getId())));
 
-                MeResponse<?> meResponse = userMapper.mapTo(user, MeResponse.class);
+                @SuppressWarnings("unchecked")
+                MeResponse<Object> meResponse = userMapper.mapTo(user, MeResponse.class);
                 LocalDateTime now = LocalDateTime.now();
                 int month = now.getMonthValue();
                 int year = now.getYear();
                 meResponse.setTier(rankingService.getTier(user.getId(), user.getRole(), month, year));
+
+                switch (user.getRole()) {
+                    case ADMIN -> {
+                        return null;
+                    }
+                    case CUSTOMER -> {
+                        List<Property> properties = propertyService.getAllByUserIdAndStatus(null, user.getId(), null, null);
+                        int bought = 0;
+                        int rent = 0;
+                        int invest = 0;
+                        int total = properties.size();
+
+                        for (Property property : properties) {
+                           if (property.getTransactionType() == Constants.TransactionTypeEnum.INVESTMENT) {
+                               invest++;
+                           }
+                           if (property.getTransactionType() == Constants.TransactionTypeEnum.SALE) {
+                               bought++;
+                           }
+                           if (property.getTransactionType() == Constants.TransactionTypeEnum.RENTAL) {
+                               rent++;
+                           }
+                        }
+
+                        meResponse.setProfile(
+                                CustomerPropertyProfileResponse.builder()
+                                        .totalListings(total)
+                                        .totalBought(bought)
+                                        .totalRented(rent)
+                                        .totalInvested(invest)
+                                        .build()
+                        );
+                    }
+                    case SALESAGENT -> {
+
+                    }
+                    case PROPERTY_OWNER -> {
+                        List<Property> properties = propertyService.getAllByUserIdAndStatus(user.getId(), null, null, null);
+                        int totalSolds = 0;
+                        int totalProjects = 0;
+                        int totalRentals = 0;
+
+                        for (Property property : properties) {
+                            Constants.TransactionTypeEnum transactionType = property.getTransactionType();
+
+                            if (transactionType == Constants.TransactionTypeEnum.SALE) {
+                                totalSolds++;
+                            }
+                            else if (transactionType == Constants.TransactionTypeEnum.INVESTMENT) {
+                                totalProjects++;
+                            }
+                            else if (transactionType == Constants.TransactionTypeEnum.RENTAL) {
+                                totalRentals++;
+                            }
+                        }
+
+                        meResponse.setProfile(
+                                PropertyOwnerPropertyProfileResponse.builder()
+                                        .totalListings(properties.size())
+                                        .totalSolds(totalSolds)
+                                        .totalProjects(totalProjects)
+                                        .totalRentals(totalRentals)
+                                        .build()
+                        );
+                    }
+                    default -> throw new BadCredentialsException("Bad credentials");
+                }
 
                 return meResponse;
             } catch (ClassCastException e) {
@@ -186,105 +255,77 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserProfileResponse<?> getUserProfileById(UUID id) {
-        User user = userRepository.findById(id)
+        User user = userRepository.findByIdWithLocation(id)
                 .orElseThrow(() -> new NotFoundException(messageSourceService.get("not_found_with_param",
                         new String[]{messageSourceService.get("user")})));
 
+        UserProfileResponse<?> userProfileResponse = userMapper.mapTo(user, UserProfileResponse.class);
+        userProfileResponse.setWardId(user.getWard().getId());
+        userProfileResponse.setWardName(user.getWard().getWardName());
+        userProfileResponse.setDistrictId(user.getWard().getDistrict().getId());
+        userProfileResponse.setDistrictName(user.getWard().getDistrict().getDistrictName());
+        userProfileResponse.setCityId(user.getWard().getDistrict().getCity().getId());
+        userProfileResponse.setCityName(user.getWard().getDistrict().getCity().getCityName());
+
+        int month = LocalDateTime.now().getMonthValue();
+        int year = LocalDateTime.now().getYear();
+
         switch (user.getRole()) {
             case ADMIN -> {
-                return UserProfileResponse.builder()
-                        .id(user.getId())
-                        .createdAt(user.getCreatedAt())
-                        .updatedAt(user.getUpdatedAt())
-                        .role(user.getRole().name())
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
-                        .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .zaloContact(user.getZaloContact())
-                        .status(user.getStatus().name())
-                        .build();
+                return userProfileResponse;
             }
             case CUSTOMER -> {
-                return UserProfileResponse.builder()
-                        .id(user.getId())
-                        .createdAt(user.getCreatedAt())
-                        .updatedAt(user.getUpdatedAt())
-                        .role(user.getRole().name())
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
-                        .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .zaloContact(user.getZaloContact())
-                        .status(user.getStatus().name())
-                        .build();
+                userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.CUSTOMER, month, year));
+                // TODO: Implement property transaction history
+                return userProfileResponse;
             }
             case SALESAGENT -> {
-                return UserProfileResponse.builder()
-                        .id(user.getId())
-                        .createdAt(user.getCreatedAt())
-                        .updatedAt(user.getUpdatedAt())
-                        .role(user.getRole().name())
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
-                        .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .zaloContact(user.getZaloContact())
-                        .status(user.getStatus().name())
-                        .build();
+                userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.SALESAGENT, month, year));
+                // TODO: Implement property transaction history
+                return userProfileResponse;
             }
             case PROPERTY_OWNER -> {
+                userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.PROPERTY_OWNER, month, year));
+
                 PropertyOwnerPropertyProfileResponse ownerPropertyProfileResponse = new PropertyOwnerPropertyProfileResponse();
-                List<Property> properties = propertyService.getAllByUserId(id, null, null)
-                        .stream()
-                        .filter(property ->
-                                property.getStatus() != Constants.PropertyStatusEnum.PENDING
-                                && property.getStatus() != Constants.PropertyStatusEnum.REJECTED
-                                && property.getStatus() != Constants.PropertyStatusEnum.DELETED
-                                && property.getStatus() != Constants.PropertyStatusEnum.APPROVED
-                                && property.getStatus() != Constants.PropertyStatusEnum.UNAVAILABLE
-                        )
-                        .toList();
+                List<Property> properties = propertyService.getAllByUserIdAndStatus(id, null, null,
+                                List.of(Constants.PropertyStatusEnum.AVAILABLE, Constants.PropertyStatusEnum.SOLD, Constants.PropertyStatusEnum.RENTED));
 
-                // Filter properties for SALE transactions that are SOLD or AVAILABLE
-                List<Property> solds = properties.stream()
-                        .filter(property -> property.getTransactionType() == Constants.TransactionTypeEnum.SALE
-                                && (property.getStatus() == Constants.PropertyStatusEnum.SOLD
-                                || property.getStatus() == Constants.PropertyStatusEnum.AVAILABLE))
-                        .toList();
+                int totalSolds = 0;
+                int totalProjects = 0;
+                int totalRentals = 0;
 
-                // Filter properties for INVESTMENT transactions (Projects) that are SOLD or AVAILABLE
-                List<Property> projects = properties.stream()
-                        .filter(property -> property.getTransactionType() == Constants.TransactionTypeEnum.INVESTMENT
-                                && (property.getStatus() == Constants.PropertyStatusEnum.SOLD
-                                || property.getStatus() == Constants.PropertyStatusEnum.AVAILABLE))
-                        .toList();
+                for (Property property : properties) {
+                    Constants.TransactionTypeEnum transactionType = property.getTransactionType();
+                    Constants.PropertyStatusEnum status = property.getStatus();
 
-                // Filter properties for RENTAL transactions that are RENTED or AVAILABLE
-                List<Property> rentals = properties.stream()
-                        .filter(property -> property.getTransactionType() == Constants.TransactionTypeEnum.RENTAL
-                                && (property.getStatus() == Constants.PropertyStatusEnum.RENTED
-                                || property.getStatus() == Constants.PropertyStatusEnum.AVAILABLE))
-                        .toList();
+                    // Count SALE transactions that are SOLD or AVAILABLE
+                    if (transactionType == Constants.TransactionTypeEnum.SALE
+                            && (status == Constants.PropertyStatusEnum.SOLD || status == Constants.PropertyStatusEnum.AVAILABLE)) {
+                        totalSolds++;
+                    }
+                    // Count INVESTMENT transactions (Projects) that are AVAILABLE
+                    else if (transactionType == Constants.TransactionTypeEnum.INVESTMENT
+                            && status == Constants.PropertyStatusEnum.AVAILABLE) {
+                        totalProjects++;
+                    }
+                    // Count RENTAL transactions that are RENTED or AVAILABLE
+                    else if (transactionType == Constants.TransactionTypeEnum.RENTAL
+                            && (status == Constants.PropertyStatusEnum.RENTED || status == Constants.PropertyStatusEnum.AVAILABLE)) {
+                        totalRentals++;
+                    }
+                }
 
                 ownerPropertyProfileResponse.setTotalListings(properties.size());
-                ownerPropertyProfileResponse.setTotalSolds(solds.size());
-                ownerPropertyProfileResponse.setTotalProjects(projects.size());
-                ownerPropertyProfileResponse.setTotalRentals(rentals.size());
+                ownerPropertyProfileResponse.setTotalSolds(totalSolds);
+                ownerPropertyProfileResponse.setTotalProjects(totalProjects);
+                ownerPropertyProfileResponse.setTotalRentals(totalRentals);
 
-                return UserProfileResponse.<PropertyOwnerPropertyProfileResponse>builder()
-                        .id(user.getId())
-                        .createdAt(user.getCreatedAt())
-                        .updatedAt(user.getUpdatedAt())
-                        .role(user.getRole().name())
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
-                        .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .zaloContact(user.getZaloContact())
-                        .status(user.getStatus().name())
-                        .propertyProfile(ownerPropertyProfileResponse)
-                        .build();
+                @SuppressWarnings("unchecked")
+                UserProfileResponse<PropertyOwnerPropertyProfileResponse> ownerProfileResponse =
+                        (UserProfileResponse<PropertyOwnerPropertyProfileResponse>) userProfileResponse;
+                ownerProfileResponse.setPropertyProfile(ownerPropertyProfileResponse);
+                return ownerProfileResponse;
             }
             default -> throw new BadCredentialsException(messageSourceService.get("invalid_role"));
         }

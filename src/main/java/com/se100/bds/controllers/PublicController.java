@@ -217,7 +217,7 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "List of property type IDs to filter by")
             @RequestParam(required = false) List<UUID> propertyTypeIds,
 
-            @Parameter(description = "Property owner ID")
+            @Parameter(description = "Property owner ID; Note: Use this when get all properties by owner id, if search in the landing page using owner's name and tier, keep this null")
             @RequestParam(required = false) UUID ownerId,
 
             @Parameter(description = "Property owner's name")
@@ -226,7 +226,16 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "Property owner's tier")
             @RequestParam(required = false) List<Constants.ContributionTierEnum> ownerTier,
 
-            @Parameter(description = "Get top K property? This sorted by most popular property")
+            @Parameter(description = "The same shit as owner")
+            @RequestParam(required = false) UUID agentId,
+
+            @Parameter(description = "Agent's name")
+            @RequestParam(required = false) String agentName,
+
+            @Parameter(description = "Agent's tier")
+            @RequestParam(required = false) List<Constants.PerformanceTierEnum> agentTier,
+
+            @Parameter(description = "Get top K property? This sorted by most popular property. If admin, don't touch it")
             @RequestParam(required = true, defaultValue = "false") Boolean topK,
 
             @Parameter(description = "Minimum price")
@@ -277,6 +286,9 @@ public class PublicController extends AbstractBaseController {
                 ownerId,
                 ownerName,
                 ownerTier,
+                agentId,
+                agentName,
+                agentTier,
                 minPrice,
                 maxPrice,
                 minArea,

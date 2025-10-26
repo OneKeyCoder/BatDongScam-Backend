@@ -409,7 +409,6 @@ public final class Constants {
         PENDING("PENDING"),
         REJECTED("REJECTED"),
         APPROVED("APPROVED"),
-        PAID("PAID"),
         SOLD("SOLD"),
         RENTED("RENTED"),
         AVAILABLE("AVAILABLE"),

@@ -5,6 +5,7 @@ import com.se100.bds.models.entities.user.PropertyOwner;
 import com.se100.bds.repositories.dtos.MediaProjection;
 import com.se100.bds.repositories.dtos.PropertyCardProtection;
 import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
+import com.se100.bds.utils.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,6 +63,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     JOIN District d ON w.district.id = d.id
     JOIN City c ON d.city.id = c.id
     LEFT JOIN PropertyOwner po ON p.owner.id = po.id
+    LEFT JOIN SaleAgent sa ON p.assignedAgent.id = sa.id
     LEFT JOIN User u ON po.user.id = u.id
     LEFT JOIN Media m ON m.property.id = p.id
     WHERE
@@ -70,6 +73,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         AND (COALESCE(:wardIds, NULL) IS NULL OR w.id IN :wardIds)
         AND (COALESCE(:propertyTypeIds, NULL) IS NULL OR p.propertyType.id IN :propertyTypeIds)
         AND (COALESCE(:ownerIds, NULL) IS NULL OR po.id IN :ownerIds)
+        AND (COALESCE(:agentIds, NULL) IS NULL OR sa.id IN :agentIds)
         AND (:minPrice IS NULL OR p.priceAmount >= :minPrice)
         AND (:maxPrice IS NULL OR p.priceAmount <= :maxPrice)
         AND (:minArea IS NULL OR p.area >= :minArea)
@@ -92,6 +96,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
             @Param("wardIds") List<UUID> wardIds,
             @Param("propertyTypeIds") List<UUID> propertyTypeIds,
             @Param("ownerIds") List<UUID> ownerIds,
+            @Param("agentIds") List<UUID> agentIds,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("minArea") BigDecimal minArea,
@@ -195,7 +200,41 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     """)
     List<Property> findAllByCustomer_Id(@Param("customerId") UUID customerId);
 
+    @Query("""
+    SELECT DISTINCT p
+    FROM Property p
+    JOIN Contract c ON c.property.id = p.id
+    WHERE c.customer.id = :customerId 
+        AND (COALESCE(:statuses, NULL) IS NULL OR p.status IN :statuses)
+    """)
+    List<Property> findAllByCustomer_IdAndStatusIn(@Param("customerId") UUID customerId, @Param("statuses") Collection<Constants.PropertyStatusEnum> statuses);
+
     List<Property> findAllByOwner_Id(UUID ownerId);
 
     List<Property> findAllByAssignedAgent_Id(UUID assignedAgentId);
+
+    @Query("""
+    SELECT p
+    FROM Property p
+    WHERE p.owner.id = :ownerId
+        AND (COALESCE(:statuses, NULL) IS NULL OR p.status IN :statuses)
+    """)
+    List<Property> findAllByOwner_IdAndStatusIn(@Param("ownerId") UUID ownerId, @Param("statuses") Collection<Constants.PropertyStatusEnum> statuses);
+
+    @Query("""
+    SELECT p
+    FROM Property p
+    WHERE p.assignedAgent.id = :assignedAgentId
+        AND (COALESCE(:statuses, NULL) IS NULL OR p.status IN :statuses)
+    """)
+    List<Property> findAllByAssignedAgent_IdAndStatusIn(@Param("assignedAgentId") UUID assignedAgentId, @Param("statuses") Collection<Constants.PropertyStatusEnum> statuses);
+
+    @Query("""
+    SELECT p
+    FROM Property p
+    WHERE p.owner.id = :ownerId
+        AND p.assignedAgent.id = :assignedAgentId
+        AND (COALESCE(:statuses, NULL) IS NULL OR p.status IN :statuses)
+    """)
+    List<Property> findAllByOwner_IdAndAssignedAgent_IdAndStatusIn(@Param("ownerId") UUID ownerId, @Param("assignedAgentId") UUID assignedAgentId, @Param("statuses") Collection<Constants.PropertyStatusEnum> statuses);
 }

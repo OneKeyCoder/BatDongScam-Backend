@@ -48,6 +48,7 @@ public class PropertyServiceImpl implements PropertyService {
     public Page<PropertyCard> getAllCardsWithFilters(List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
                                                      List<UUID> propertyTypeIds, UUID ownerId, String ownerName,
                                                      List<Constants.ContributionTierEnum> ownerTier,
+                                                     UUID agentId, String agentName, List<Constants.PerformanceTierEnum> agentTier,
                                                      BigDecimal minPrice, BigDecimal maxPrice, BigDecimal minArea, BigDecimal maxArea,
                                                      Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors,
                                                      String houseOrientation, String balconyOrientation,
@@ -104,6 +105,30 @@ public class PropertyServiceImpl implements PropertyService {
             }
         }
 
+        List<UUID> agentIds;
+        if (agentId != null) {
+            agentIds = List.of(agentId);
+        }  else {
+            String searchName = agentName != null ? agentName : "";
+            List<User> agents = userService.getAllByName(searchName);
+            if (agentTier != null && !agentTier.isEmpty()) {
+                int currentMonth = LocalDateTime.now().getMonthValue();
+                int currentYear = LocalDateTime.now().getYear();
+
+                agentIds = agents.stream()
+                        .map(User::getId)
+                        .filter(id -> {
+                            String tier = rankingService.getTier(id, Constants.RoleEnum.SALESAGENT, currentMonth, currentYear);
+                            return tier != null && agentTier.stream().anyMatch(filter -> filter.name().equals(tier));
+                        })
+                        .toList();
+            } else  {
+                agentIds = agents.stream()
+                        .map(User::getId)
+                        .toList();
+            }
+        }
+
         List<String> statusStrings = null;
         if (statuses != null && !statuses.isEmpty()) {
             statusStrings = statuses.stream()
@@ -119,6 +144,7 @@ public class PropertyServiceImpl implements PropertyService {
                 wardIds,
                 propertyTypeIds,
                 ownerIds,
+                agentIds,
                 minPrice,
                 maxPrice,
                 minArea,
@@ -160,17 +186,17 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Property> getAllByUserId(UUID ownerId, UUID customerId, UUID salesAgentId) {
+    public List<Property> getAllByUserIdAndStatus(UUID ownerId, UUID customerId, UUID salesAgentId, List<Constants.PropertyStatusEnum> statuses) {
         if (customerId == null) {
             if (salesAgentId == null) {
-                return propertyRepository.findAllByOwner_Id(ownerId);
+                return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByOwner_Id(ownerId) : propertyRepository.findAllByOwner_IdAndStatusIn(ownerId, statuses);
             }
             else if (ownerId == null) {
-                return propertyRepository.findAllByAssignedAgent_Id(salesAgentId);
+                return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByAssignedAgent_Id(salesAgentId) : propertyRepository.findAllByAssignedAgent_IdAndStatusIn(salesAgentId, statuses);
             }
-            return propertyRepository.findAllByOwner_IdAndAssignedAgent_Id(ownerId, salesAgentId);
+            return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByOwner_IdAndAssignedAgent_Id(ownerId, salesAgentId) : propertyRepository.findAllByOwner_IdAndAssignedAgent_IdAndStatusIn(ownerId, salesAgentId, statuses);
         } else {
-            return propertyRepository.findAllByCustomer_Id(customerId);
+            return propertyRepository.findAllByCustomer_IdAndStatusIn(customerId, statuses);
         }
     }
 }

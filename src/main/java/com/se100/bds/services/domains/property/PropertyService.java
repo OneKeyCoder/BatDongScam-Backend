@@ -17,11 +17,13 @@ public interface PropertyService {
     Page<PropertyCard> getAllCardsWithFilters(List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
                                               List<UUID> propertyTypeIds, UUID ownerId, String ownerName,
                                               List<Constants.ContributionTierEnum> ownerTier,
+                                              UUID agentId, String agentName,
+                                              List<Constants.PerformanceTierEnum> agentTier,
                                               BigDecimal minPrice, BigDecimal maxPrice, BigDecimal minArea, BigDecimal maxArea,
                                               Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors, String houseOrientation, String balconyOrientation,
                                               List<Constants.TransactionTypeEnum> transactionType, List<Constants.PropertyStatusEnum> statuses, boolean topK,
                                               Pageable pageable);
     Page<PropertyType> getAllTypes(Pageable pageable);
     PropertyDetails getPropertyDetailsById(UUID propertyId);
-    List<Property> getAllByUserId(UUID ownerId, UUID customerId, UUID salesAgentId);
+    List<Property> getAllByUserIdAndStatus(UUID ownerId, UUID customerId, UUID salesAgentId, List<Constants.PropertyStatusEnum> statuses);
 }

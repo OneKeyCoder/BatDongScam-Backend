@@ -100,44 +100,4 @@ public class AccountController extends AbstractBaseController {
         Page<MeResponse> response = userMapper.mapToPage(userPage, MeResponse.class);
         return responseFactory.successPage(response, "Users retrieved successfully");
     }
-
-    @GetMapping("/{id}")
-    @Operation(
-            summary = "Get user by ID",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = MeResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "User not found",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<SingleResponse<MeResponse<?>>> getUserById(
-            @Parameter(description = "User ID", required = true)
-            @PathVariable UUID id
-    ) {
-        User user = userService.findById(id);
-        MeResponse<?> meResponse = userMapper.mapTo(user, MeResponse.class);
-        return responseFactory.successSingle(meResponse, "User retrieved successfully");
-    }
 }
