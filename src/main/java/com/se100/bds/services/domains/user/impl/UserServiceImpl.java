@@ -313,12 +313,39 @@ public class UserServiceImpl implements UserService {
             }
             case CUSTOMER -> {
                 userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.CUSTOMER, month, year));
-                // TODO: Implement property transaction history
-                return userProfileResponse;
+
+                CustomerPropertyProfileResponse customerPropertyProfileResponse = new CustomerPropertyProfileResponse();
+                List<Property> properties = propertyService.getAllByUserIdAndStatus(null, id, null, null);
+
+                int totalSolds = 0;
+                int totalProjects = 0;
+                int totalRentals = 0;
+
+                for (Property property : properties) {
+                    if (property.getTransactionType() == Constants.TransactionTypeEnum.SALE) {
+                        totalSolds++;
+                    }
+                    else  if (property.getTransactionType() == Constants.TransactionTypeEnum.RENTAL) {
+                        totalRentals++;
+                    }
+                    else
+                        totalProjects++;
+                }
+
+                customerPropertyProfileResponse.setTotalListings(properties.size());
+                customerPropertyProfileResponse.setTotalBought(totalSolds);
+                customerPropertyProfileResponse.setTotalRented(totalRentals);
+                customerPropertyProfileResponse.setTotalInvested(totalProjects);
+
+                UserProfileResponse<CustomerPropertyProfileResponse> customerProfileResponse =
+                        (UserProfileResponse<CustomerPropertyProfileResponse>) userProfileResponse;
+
+                customerProfileResponse.setPropertyProfile(customerPropertyProfileResponse);
+                return customerProfileResponse;
             }
             case SALESAGENT -> {
                 userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.SALESAGENT, month, year));
-                // TODO: Implement property transaction history
+
                 return userProfileResponse;
             }
             case PROPERTY_OWNER -> {
@@ -358,7 +385,6 @@ public class UserServiceImpl implements UserService {
                 ownerPropertyProfileResponse.setTotalProjects(totalProjects);
                 ownerPropertyProfileResponse.setTotalRentals(totalRentals);
 
-                @SuppressWarnings("unchecked")
                 UserProfileResponse<PropertyOwnerPropertyProfileResponse> ownerProfileResponse =
                         (UserProfileResponse<PropertyOwnerPropertyProfileResponse>) userProfileResponse;
                 ownerProfileResponse.setPropertyProfile(ownerPropertyProfileResponse);

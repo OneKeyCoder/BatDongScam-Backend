@@ -198,7 +198,7 @@ public class PropertyServiceImpl implements PropertyService {
             }
             return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByOwner_IdAndAssignedAgent_Id(ownerId, salesAgentId) : propertyRepository.findAllByOwner_IdAndAssignedAgent_IdAndStatusIn(ownerId, salesAgentId, statuses);
         } else {
-            return propertyRepository.findAllByCustomer_IdAndStatusIn(customerId, statuses);
+            return propertyRepository.findAllByCustomer_IdAndStatusIn(customerId);
         }
     }
 

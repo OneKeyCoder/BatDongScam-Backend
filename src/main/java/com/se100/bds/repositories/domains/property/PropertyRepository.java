@@ -204,10 +204,11 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     SELECT DISTINCT p
     FROM Property p
     JOIN Contract c ON c.property.id = p.id
-    WHERE c.customer.id = :customerId 
-        AND (COALESCE(:statuses, NULL) IS NULL OR p.status IN :statuses)
+    WHERE c.customer.id = :customerId
+        AND (c.status = com.se100.bds.utils.Constants.ContractStatusEnum.ACTIVE 
+            OR c.status = com.se100.bds.utils.Constants.ContractStatusEnum.COMPLETED)
     """)
-    List<Property> findAllByCustomer_IdAndStatusIn(@Param("customerId") UUID customerId, @Param("statuses") Collection<Constants.PropertyStatusEnum> statuses);
+    List<Property> findAllByCustomer_IdAndStatusIn(@Param("customerId") UUID customerId);
 
     List<Property> findAllByOwner_Id(UUID ownerId);
 
