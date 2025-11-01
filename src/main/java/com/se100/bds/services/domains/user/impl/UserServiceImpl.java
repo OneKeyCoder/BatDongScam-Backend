@@ -304,15 +304,12 @@ public class UserServiceImpl implements UserService {
         userProfileResponse.setCityId(user.getWard().getDistrict().getCity().getId());
         userProfileResponse.setCityName(user.getWard().getDistrict().getCity().getCityName());
 
-        int month = LocalDateTime.now().getMonthValue();
-        int year = LocalDateTime.now().getYear();
-
         switch (user.getRole()) {
             case ADMIN -> {
                 return userProfileResponse;
             }
             case CUSTOMER -> {
-                userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.CUSTOMER, month, year));
+                userProfileResponse.setTier(rankingService.getCurrentTier(id, Constants.RoleEnum.CUSTOMER));
 
                 CustomerPropertyProfileResponse customerPropertyProfileResponse = new CustomerPropertyProfileResponse();
                 List<Property> properties = propertyService.getAllByUserIdAndStatus(null, id, null, null);
@@ -344,12 +341,12 @@ public class UserServiceImpl implements UserService {
                 return customerProfileResponse;
             }
             case SALESAGENT -> {
-                userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.SALESAGENT, month, year));
+                userProfileResponse.setTier(rankingService.getCurrentTier(id, Constants.RoleEnum.SALESAGENT));
 
                 return userProfileResponse;
             }
             case PROPERTY_OWNER -> {
-                userProfileResponse.setTier(rankingService.getTier(id, Constants.RoleEnum.PROPERTY_OWNER, month, year));
+                userProfileResponse.setTier(rankingService.getCurrentTier(id, Constants.RoleEnum.PROPERTY_OWNER));
 
                 PropertyOwnerPropertyProfileResponse ownerPropertyProfileResponse = new PropertyOwnerPropertyProfileResponse();
                 List<Property> properties = propertyService.getAllByUserIdAndStatus(id, null, null,

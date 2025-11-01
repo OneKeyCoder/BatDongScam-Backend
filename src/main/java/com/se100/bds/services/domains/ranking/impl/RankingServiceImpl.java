@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -51,5 +52,12 @@ public class RankingServiceImpl implements RankingService {
                 return null;
             }
         }
+    }
+
+    @Override
+    public String getCurrentTier(UUID userId, Constants.RoleEnum role) {
+        int month = LocalDateTime.now().getMonthValue();
+        int year = LocalDateTime.now().getYear();
+        return getTier(userId, role, month, year);
     }
 }

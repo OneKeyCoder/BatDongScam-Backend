@@ -1,13 +1,17 @@
 package com.se100.bds.mappers;
 
+import com.se100.bds.dtos.responses.property.DocumentResponse;
 import com.se100.bds.dtos.responses.property.MediaResponse;
 import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.SimplePropertyCard;
 import com.se100.bds.dtos.responses.user.SimpleUserResponse;
 import com.se100.bds.models.entities.property.Property;
+import com.se100.bds.repositories.dtos.DocumentProjection;
 import com.se100.bds.repositories.dtos.MediaProjection;
 import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
+import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.dtos.results.PropertyCard;
+import com.se100.bds.utils.Constants;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -17,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class PropertyMapper extends BaseMapper {
+
     @Autowired
     public PropertyMapper(ModelMapper modelMapper) {
         super(modelMapper);
@@ -158,7 +163,6 @@ public class PropertyMapper extends BaseMapper {
                                             .fileName(media.getFileName())
                                             .filePath(media.getFilePath())
                                             .mimeType(media.getMimeType())
-                                            .documentType(media.getDocumentType())
                                             .createdAt(media.getCreatedAt())
                                             .updatedAt(media.getUpdatedAt())
                                             .build())
@@ -169,7 +173,7 @@ public class PropertyMapper extends BaseMapper {
                 });
     }
 
-    public PropertyDetails toPropertyDetails(PropertyDetailsProjection projection, List<MediaProjection> mediaProjections) {
+    public PropertyDetails toPropertyDetails(PropertyDetailsProjection projection, List<MediaProjection> mediaProjections, List<DocumentProjection> documentProjections) {
         if (projection == null) {
             return null;
         }
@@ -184,7 +188,26 @@ public class PropertyMapper extends BaseMapper {
                         .fileName(media.fileName())
                         .filePath(media.filePath())
                         .mimeType(media.mimeType())
-                        .documentType(media.documentType())
+                        .build())
+                .collect(Collectors.toList()) : null;
+
+        // Map document projections to DTOs
+        List<DocumentResponse> documentResponses = documentProjections != null ? documentProjections.stream()
+                .map(doc -> DocumentResponse.builder()
+                        .id(doc.id())
+                        .createdAt(doc.createdAt())
+                        .updatedAt(doc.updatedAt())
+                        .documentTypeId(doc.documentTypeId())
+                        .documentTypeName(doc.documentTypeName())
+                        .documentNumber(doc.documentNumber())
+                        .documentName(doc.documentName())
+                        .filePath(doc.filePath())
+                        .issueDate(doc.issueDate())
+                        .expiryDate(doc.expiryDate())
+                        .issuingAuthority(doc.issuingAuthority())
+                        .verificationStatus(doc.verificationStatus())
+                        .verifiedAt(doc.verifiedAt())
+                        .rejectionReason(doc.rejectionReason())
                         .build())
                 .collect(Collectors.toList()) : null;
 
@@ -240,6 +263,7 @@ public class PropertyMapper extends BaseMapper {
                 .viewCount(projection.viewCount())
                 .approvedAt(projection.approvedAt())
                 .mediaList(mediaResponses)
+                .documentList(documentResponses)
                 .build();
     }
 }

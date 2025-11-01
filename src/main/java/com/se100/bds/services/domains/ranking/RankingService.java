@@ -5,5 +5,6 @@ import com.se100.bds.utils.Constants;
 import java.util.UUID;
 
 public interface RankingService {
-    public String getTier(UUID userId, Constants.RoleEnum role, int month, int year);
+    String getTier(UUID userId, Constants.RoleEnum role, int month, int year);
+    String getCurrentTier(UUID userId, Constants.RoleEnum role);
 }

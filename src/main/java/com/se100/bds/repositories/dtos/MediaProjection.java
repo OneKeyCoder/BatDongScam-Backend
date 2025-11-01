@@ -10,6 +10,5 @@ public record MediaProjection(
     String mediaType,
     String fileName,
     String filePath,
-    String mimeType,
-    String documentType
+    String mimeType
 ) {}

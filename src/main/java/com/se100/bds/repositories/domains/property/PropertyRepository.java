@@ -21,32 +21,13 @@ import java.util.UUID;
 
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSpecificationExecutor<Property> {
-    @Query("""
-        SELECT new com.se100.bds.repositories.dtos.PropertyCardProtection (
-            p.id,
-            p.title,
-            MIN(m.filePath),
-            false,
-            COALESCE(CAST(COUNT(DISTINCT m.id) AS int), 0),
-            p.fullAddress,
-            d.districtName,
-            c.cityName,
-            CAST(p.status AS string),
-            p.priceAmount,
-            p.area
-        )
-        FROM Property p
-        JOIN Ward w ON p.ward.id = w.id
-        JOIN District d ON w.district.id = d.id
-        JOIN City c ON d.city.id = c.id
-        LEFT JOIN Media m ON m.property.id = p.id
-        GROUP BY p.id, p.title, p.fullAddress, d.districtName, c.cityName, p.status, p.priceAmount, p.area
-    """)
-    Page<PropertyCardProtection> findAllPropertyCards(Pageable pageable);
 
     @Query("""
     SELECT new com.se100.bds.repositories.dtos.PropertyCardProtection (
         p.id,
+        p.createdAt,
+        p.updatedAt,
+        p.transactionType,
         p.title,
         MIN(m.filePath),
         false,
@@ -56,7 +37,13 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         c.cityName,
         CAST(p.status AS string),
         p.priceAmount,
-        p.area
+        p.area,
+        po.id,
+        po.user.firstName,
+        po.user.lastName,
+        sa.id,
+        sa.user.firstName,
+        sa.user.lastName
     )
     FROM Property p
     JOIN Ward w ON p.ward.id = w.id
@@ -86,7 +73,24 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         AND (:balconyOrientation IS NULL OR CAST(p.balconyOrientation AS string) = :balconyOrientation)
         AND (COALESCE(:transactionType, NULL) IS NULL OR CAST(p.transactionType AS string) IN :transactionType)
         AND (:statuses IS NULL OR CAST(p.status AS string) IN :statuses)
-    GROUP BY p.id, p.title, p.fullAddress, d.districtName, c.cityName, p.status, p.priceAmount, p.area
+    GROUP BY 
+        p.id, 
+        p.createdAt, 
+        p.updatedAt, 
+        p.transactionType, 
+        p.title, 
+        p.fullAddress, 
+        d.districtName, 
+        c.cityName, 
+        p.status, 
+        p.priceAmount, 
+        p.area, 
+        po.id,
+        po.user.firstName,
+        po.user.lastName,
+        sa.id,
+        sa.user.firstName,
+        sa.user.lastName
     """)
     Page<PropertyCardProtection> findAllPropertyCardsWithFilter(
             Pageable pageable,
@@ -113,7 +117,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     );
 
     @Query("""
-        SELECT 
+        SELECT
             p.id AS id,
             p.createdAt AS createdAt,
             p.updatedAt AS updatedAt,
@@ -180,13 +184,35 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
             CAST(m.mediaType AS string) AS mediaType,
             m.fileName AS fileName,
             m.filePath AS filePath,
-            m.mimeType AS mimeType,
-            m.documentType AS documentType
+            m.mimeType AS mimeType
         FROM Media m
         WHERE m.property.id = :propertyId
         ORDER BY m.createdAt ASC
     """)
     List<MediaProjection> findMediaByPropertyId(@Param("propertyId") UUID propertyId);
+
+    @Query("""
+        SELECT
+            d.id AS id,
+            d.createdAt AS createdAt,
+            d.updatedAt AS updatedAt,
+            dt.id AS documentTypeId,
+            dt.name AS documentTypeName,
+            d.documentNumber AS documentNumber,
+            d.documentName AS documentName,
+            d.filePath AS filePath,
+            d.issueDate AS issueDate,
+            d.expiryDate AS expiryDate,
+            d.issuingAuthority AS issuingAuthority,
+            CAST(d.verificationStatus AS string) AS verificationStatus,
+            d.verifiedAt AS verifiedAt,
+            d.rejectionReason AS rejectionReason
+        FROM IdentificationDocument d
+        JOIN DocumentType dt ON d.documentType.id = dt.id
+        WHERE d.property.id = :propertyId
+        ORDER BY d.createdAt ASC
+    """)
+    List<com.se100.bds.repositories.dtos.DocumentProjection> findDocumentsByPropertyId(@Param("propertyId") UUID propertyId);
 
     List<Property> findAllByOwner(PropertyOwner owner);
 
@@ -205,7 +231,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     FROM Property p
     JOIN Contract c ON c.property.id = p.id
     WHERE c.customer.id = :customerId
-        AND (c.status = com.se100.bds.utils.Constants.ContractStatusEnum.ACTIVE 
+        AND (c.status = com.se100.bds.utils.Constants.ContractStatusEnum.ACTIVE
             OR c.status = com.se100.bds.utils.Constants.ContractStatusEnum.COMPLETED)
     """)
     List<Property> findAllByCustomer_IdAndStatusIn(@Param("customerId") UUID customerId);

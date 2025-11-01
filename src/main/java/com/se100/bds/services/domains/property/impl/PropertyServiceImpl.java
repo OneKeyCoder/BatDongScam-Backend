@@ -162,7 +162,24 @@ public class PropertyServiceImpl implements PropertyService {
                 currentUser != null ? currentUser.getId() : null
         );
 
-        return propertyMapper.mapToPage(cardProtections, PropertyCard.class);
+        Page<PropertyCard> propertyCardsPage = propertyMapper.mapToPage(cardProtections, PropertyCard.class);
+
+        for (PropertyCard propertyCard : propertyCardsPage) {
+            if (propertyCard.getOwnerId() != null) {
+                propertyCard.setOwnerTier(rankingService.getCurrentTier(
+                        propertyCard.getOwnerId(),
+                        Constants.RoleEnum.PROPERTY_OWNER
+                ));
+            }
+            if (propertyCard.getAgentId() != null) {
+                propertyCard.setAgentTier(rankingService.getCurrentTier(
+                        propertyCard.getAgentId(),
+                        Constants.RoleEnum.SALESAGENT
+                ));
+            }
+        }
+
+        return propertyCardsPage;
     }
 
     @Override
@@ -182,8 +199,31 @@ public class PropertyServiceImpl implements PropertyService {
         // Get media list
         List<MediaProjection> mediaProjections = propertyRepository.findMediaByPropertyId(propertyId);
 
+        // Get document list
+        List<com.se100.bds.repositories.dtos.DocumentProjection> documentProjections = propertyRepository.findDocumentsByPropertyId(propertyId);
+
         // Use mapper to convert projection to DTO
-        return propertyMapper.toPropertyDetails(projection, mediaProjections);
+        PropertyDetails propertyDetails = propertyMapper.toPropertyDetails(projection, mediaProjections, documentProjections);
+
+        // Set tier for owner
+        if (propertyDetails.getOwner() != null && propertyDetails.getOwner().getId() != null) {
+            String ownerTier = rankingService.getCurrentTier(
+                    propertyDetails.getOwner().getId(),
+                    Constants.RoleEnum.PROPERTY_OWNER
+            );
+            propertyDetails.getOwner().setTier(ownerTier);
+        }
+
+        // Set tier for agent
+        if (propertyDetails.getAssignedAgent() != null && propertyDetails.getAssignedAgent().getId() != null) {
+            String agentTier = rankingService.getCurrentTier(
+                    propertyDetails.getAssignedAgent().getId(),
+                    Constants.RoleEnum.SALESAGENT
+            );
+            propertyDetails.getAssignedAgent().setTier(agentTier);
+        }
+
+        return propertyDetails;
     }
 
     @Override

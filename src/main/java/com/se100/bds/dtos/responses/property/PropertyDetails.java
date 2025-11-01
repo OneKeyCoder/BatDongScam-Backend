@@ -48,4 +48,5 @@ public class PropertyDetails extends AbstractBaseDataResponse {
     private Integer viewCount;
     private LocalDateTime approvedAt;
     private List<MediaResponse> mediaList;
+    private List<DocumentResponse> documentList;
 }

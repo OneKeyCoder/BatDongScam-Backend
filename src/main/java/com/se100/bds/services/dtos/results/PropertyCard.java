@@ -1,11 +1,13 @@
 package com.se100.bds.services.dtos.results;
 
+import com.se100.bds.utils.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -14,6 +16,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PropertyCard {
     private UUID id;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private String title;
     private String thumbnailUrl;
     private boolean isFavorite;
@@ -23,4 +27,12 @@ public class PropertyCard {
     private String status;
     private BigDecimal price;
     private BigDecimal totalArea;
+    private UUID ownerId;
+    private String ownerFirstName;
+    private String ownerLastName;
+    private String ownerTier;
+    private UUID agentId;
+    private String agentFirstName;
+    private String agentLastName;
+    private String agentTier;
 }
