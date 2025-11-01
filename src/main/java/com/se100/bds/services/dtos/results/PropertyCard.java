@@ -1,6 +1,5 @@
 package com.se100.bds.services.dtos.results;
 
-import com.se100.bds.utils.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,5 +1,6 @@
 package com.se100.bds.services.domains.ranking.impl;
 
+import com.se100.bds.models.schemas.ranking.*;
 import com.se100.bds.repositories.domains.mongo.ranking.*;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.utils.Constants;
@@ -59,5 +60,64 @@ public class RankingServiceImpl implements RankingService {
         int month = LocalDateTime.now().getMonthValue();
         int year = LocalDateTime.now().getYear();
         return getTier(userId, role, month, year);
+    }
+
+    @Override
+    public IndividualSalesAgentPerformanceMonth getSaleAgentMonth(UUID agentId, int month, int year) {
+        return individualSalesAgentPerformanceMonthRepository.findByAgentIdAndMonthAndYear(
+                agentId, month, year
+        );
+    }
+
+    @Override
+    public IndividualSalesAgentPerformanceMonth getSaleAgentCurrentMonth(UUID agentId) {
+        int month = LocalDateTime.now().getMonthValue();
+        int year = LocalDateTime.now().getYear();
+
+        return getSaleAgentMonth(agentId, month, year);
+    }
+
+    @Override
+    public IndividualSalesAgentPerformanceCareer getSaleAgentCareer(UUID agentId) {
+        return individualSalesAgentPerformanceCareerRepository.findByAgentId(agentId);
+    }
+
+    @Override
+    public IndividualCustomerPotentialMonth getCustomerMonth(UUID customerId, int month, int year) {
+        return individualCustomerPotentialMonthRepository.findByCustomerIdAndMonthAndYear(
+                customerId, month, year
+        );
+    }
+
+    @Override
+    public IndividualCustomerPotentialMonth getCustomerCurrentMonth(UUID customerId) {
+        int month = LocalDateTime.now().getMonthValue();
+        int year = LocalDateTime.now().getYear();
+
+        return getCustomerMonth(customerId, month, year);
+    }
+
+    @Override
+    public IndividualCustomerPotentialAll getCustomerAll(UUID customerId) {
+        return individualCustomerPotentialAllRepository.findByCustomerId(customerId);
+    }
+
+    @Override
+    public IndividualPropertyOwnerContributionMonth getPropertyOwnerMonth(UUID propertyOwnerId, int month, int year) {
+        return individualPropertyOwnerContributionMonthRepository.findByOwnerIdAndMonthAndYear(
+                propertyOwnerId, month, year
+        );
+    }
+
+    @Override
+    public IndividualPropertyOwnerContributionMonth getPropertyOwnerCurrentMonth(UUID propertyOwnerId) {
+        int month = LocalDateTime.now().getMonthValue();
+        int year = LocalDateTime.now().getYear();
+        return getPropertyOwnerMonth(propertyOwnerId, month, year);
+    }
+
+    @Override
+    public IndividualPropertyOwnerContributionAll getPropertyOwnerAll(UUID propertyOwnerId) {
+        return individualPropertyOwnerContributionAllRepository.findByOwnerId(propertyOwnerId);
     }
 }

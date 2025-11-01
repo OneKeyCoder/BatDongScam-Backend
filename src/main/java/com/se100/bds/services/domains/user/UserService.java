@@ -1,6 +1,9 @@
 package com.se100.bds.services.domains.user;
 
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
+import com.se100.bds.dtos.responses.adminlistitem.CustomerListItem;
+import com.se100.bds.dtos.responses.adminlistitem.PropertyOwnerListItem;
+import com.se100.bds.dtos.responses.adminlistitem.SaleAgentListItem;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
 import com.se100.bds.dtos.responses.user.otherprofile.UserProfileResponse;
 import com.se100.bds.models.entities.user.SaleAgent;
@@ -14,6 +17,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindException;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,4 +56,48 @@ public interface UserService {
     void delete(String id);
 
     void activeteUser(String id);
+
+    /// ADMIN
+    Page<SaleAgentListItem> getAllSaleAgentItemsWithFilters(
+            Pageable pageable,
+            String name, Integer month, Integer year,
+            List<Constants.PerformanceTierEnum> agentTiers, Integer maxProperties,
+            Integer minPerformancePoint, Integer maxPerformancePoint,
+            Integer minRanking, Integer maxRanking,
+            Integer minAssignments, Integer maxAssignments,
+            Integer minAssignedProperties, Integer maxAssignedProperties,
+            Integer minAssignedAppointments, Integer maxAssignedAppointments,
+            Integer minContracts, Integer maxContracts,
+            Double minAvgRating, Double maxAvgRating,
+            LocalDateTime hiredDateFrom, LocalDateTime hiredDateTo,
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+    );
+    Page<CustomerListItem> getAllCustomerItemsWithFilters(
+            Pageable pageable,
+            String name, Integer month, Integer year,
+            List<Constants.CustomerTierEnum> customerTierEnums,
+            Integer minLeadingScore, Integer maxLeadingScore,
+            Integer minViewings, Integer maxViewings,
+            BigDecimal minSpending, BigDecimal maxSpending,
+            Integer minContracts, Integer maxContracts,
+            Integer minPropertiesBought, Integer maxPropertiesBought,
+            Integer minPropertiesRented, Integer maxPropertiesRented,
+            Integer minPropertiesInvested, Integer maxPropertiesInvested,
+            Integer minRanking, Integer maxRanking,
+            LocalDateTime joinedDateFrom, LocalDateTime joinedDateTo,
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+    );
+    Page<PropertyOwnerListItem> getAllPropertyOwnerItemsWithFilters(
+            Pageable pageable,
+            String name, Integer month, Integer year,
+            List<Constants.ContributionTierEnum> ownerTiers,
+            Integer minContributionPoint, Integer maxContributionPoint,
+            Integer minProperties, Integer maxProperties,
+            Integer minPropertiesForSale, Integer maxPropertiesForSale,
+            Integer minPropertiesForRents, Integer maxPropertiesForRents,
+            Integer minProjects, Integer maxProjects,
+            Integer minRanking, Integer maxRanking,
+            LocalDateTime joinedDateFrom, LocalDateTime joinedDateTo,
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+    );
 }

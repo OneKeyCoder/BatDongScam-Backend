@@ -1,6 +1,9 @@
 package com.se100.bds.services.domains.user.impl;
 
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
+import com.se100.bds.dtos.responses.adminlistitem.CustomerListItem;
+import com.se100.bds.dtos.responses.adminlistitem.PropertyOwnerListItem;
+import com.se100.bds.dtos.responses.adminlistitem.SaleAgentListItem;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
 import com.se100.bds.dtos.responses.user.propertyprofile.CustomerPropertyProfileResponse;
 import com.se100.bds.dtos.responses.user.propertyprofile.PropertyOwnerPropertyProfileResponse;
@@ -13,6 +16,12 @@ import com.se100.bds.models.entities.user.PropertyOwner;
 import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.exceptions.NotFoundException;
+import com.se100.bds.models.schemas.ranking.IndividualCustomerPotentialAll;
+import com.se100.bds.models.schemas.ranking.IndividualCustomerPotentialMonth;
+import com.se100.bds.models.schemas.ranking.IndividualPropertyOwnerContributionAll;
+import com.se100.bds.models.schemas.ranking.IndividualPropertyOwnerContributionMonth;
+import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceCareer;
+import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceMonth;
 import com.se100.bds.repositories.domains.location.WardRepository;
 import com.se100.bds.repositories.domains.user.SaleAgentRepository;
 import com.se100.bds.repositories.domains.user.UserRepository;
@@ -27,6 +36,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -42,7 +52,9 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -482,5 +494,651 @@ public class UserServiceImpl implements UserService {
         user.setLastLoginAt(LocalDateTime.now());
 
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SaleAgentListItem> getAllSaleAgentItemsWithFilters(
+            Pageable pageable,
+            String name, Integer month, Integer year,
+            List<Constants.PerformanceTierEnum> agentTiers, Integer maxProperties,
+            Integer minPerformancePoint, Integer maxPerformancePoint,
+            Integer minRanking, Integer maxRanking,
+            Integer minAssignments, Integer maxAssignments,
+            Integer minAssignedProperties, Integer maxAssignedProperties,
+            Integer minAssignedAppointments, Integer maxAssignedAppointments,
+            Integer minContracts, Integer maxContracts,
+            Double minAvgRating, Double maxAvgRating,
+            LocalDateTime hiredDateFrom, LocalDateTime hiredDateTo,
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+    ) {
+        List<User> agents = userRepository.findAllSaleAgentWithFiltersTestHiredDate(
+                name,
+                maxProperties,
+                cityIds, districtIds, wardIds
+        );
+
+        List<SaleAgentListItem> agentListItemList = new ArrayList<>();
+
+        boolean findByMonth = false;
+        if (month != null) findByMonth = true;
+
+        for (User agentUser : agents) {
+            LocalDateTime agentHiredDate = agentUser.getSaleAgent().getHiredDate();
+            if (hiredDateFrom != null && agentHiredDate.isBefore(hiredDateFrom)) {
+                continue;
+            }
+            if (hiredDateTo != null && agentHiredDate.isAfter(hiredDateTo)) {
+                continue;
+            }
+
+            if (findByMonth) {
+                IndividualSalesAgentPerformanceMonth agentPerformanceMonth = rankingService.getSaleAgentMonth(
+                        agentUser.getId(),
+                        month,
+                        year
+                );
+
+                if (agentTiers != null && !agentTiers.isEmpty()) {
+                    boolean found = false;
+                    for (var tier : agentTiers) {
+                        if (agentPerformanceMonth.getPerformanceTier() == tier) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        continue;
+                    }
+                }
+
+                Integer performancePoint = agentPerformanceMonth.getPerformancePoint();
+                if (minPerformancePoint != null && performancePoint < minPerformancePoint) {
+                    break;
+                }
+                if (maxPerformancePoint != null && performancePoint > maxPerformancePoint) {
+                    break;
+                }
+
+                Integer ranking = agentPerformanceMonth.getRankingPosition();
+                if (minRanking != null && ranking < minRanking) {
+                    break;
+                }
+                if (maxRanking != null && ranking > maxRanking) {
+                    break;
+                }
+
+                Integer assignedProperties = agentPerformanceMonth.getMonthPropertiesAssigned();
+                if (minAssignedProperties != null && assignedProperties < minAssignedProperties) {
+                    break;
+                }
+                if (maxAssignedProperties != null && assignedProperties > maxAssignedProperties) {
+                    break;
+                }
+
+                Integer assignedAppointments = agentPerformanceMonth.getMonthAppointmentsAssigned();
+                if  (minAssignedAppointments != null && assignedAppointments < minAssignedAppointments) {
+                    break;
+                }
+                if (maxAssignedAppointments != null && assignedAppointments > maxAssignedAppointments) {
+                    break;
+                }
+
+                int assignments = assignedProperties + assignedAppointments;
+                if (minAssignments != null && assignments < minAssignments) {
+                    break;
+                }
+                if (maxAssignments != null && assignments > maxAssignments) {
+                    break;
+                }
+
+                Integer monthContracts = agentPerformanceMonth.getMonthContracts();
+                if (minContracts != null && monthContracts < minContracts) {
+                    break;
+                }
+                if (maxContracts != null && monthContracts > maxContracts) {
+                    break;
+                }
+
+                BigDecimal avgRating = agentPerformanceMonth.getAvgRating();
+                if (minAvgRating != null && avgRating.compareTo(BigDecimal.valueOf(minAvgRating)) > 0) {
+                    break;
+                }
+                if (maxAvgRating != null && avgRating.compareTo(BigDecimal.valueOf(maxAvgRating)) < 0) {
+                    break;
+                }
+
+                agentListItemList.add(
+                        SaleAgentListItem.builder()
+                                .id(agentUser.getId())
+                                .createdAt(agentUser.getCreatedAt())
+                                .updatedAt(agentUser.getUpdatedAt())
+                                .firstName(agentUser.getFirstName())
+                                .lastName(agentUser.getLastName())
+                                .avatarUrl(agentUser.getAvatarUrl())
+                                .ranking(ranking)
+                                .employeeCode(agentUser.getSaleAgent().getEmployeeCode())
+                                .point(performancePoint)
+                                .tier(agentPerformanceMonth.getPerformanceTier().getValue())
+                                .totalAssignments(assignments)
+                                .totalContracts(monthContracts)
+                                .rating(avgRating.doubleValue())
+                                .totalRates(agentPerformanceMonth.getMonthRates())
+                                .hiredDate(agentUser.getSaleAgent().getHiredDate())
+                                .build()
+                );
+            } else {
+                IndividualSalesAgentPerformanceCareer agentPerformanceCareer = rankingService.getSaleAgentCareer(agentUser.getId());
+
+                Integer performancePoint = agentPerformanceCareer.getPerformancePoint();
+                if (minPerformancePoint != null && performancePoint < minPerformancePoint) {
+                    continue;
+                }
+                if (maxPerformancePoint != null && performancePoint > maxPerformancePoint) {
+                    continue;
+                }
+
+                Integer ranking = agentPerformanceCareer.getCareerRanking();
+                if (minRanking != null && ranking < minRanking) {
+                    continue;
+                }
+                if (maxRanking != null && ranking > maxRanking) {
+                    continue;
+                }
+
+                Integer assignedProperties = agentPerformanceCareer.getPropertiesAssigned();
+                if (minAssignedProperties != null && assignedProperties < minAssignedProperties) {
+                    continue;
+                }
+                if (maxAssignedProperties != null && assignedProperties > maxAssignedProperties) {
+                    continue;
+                }
+
+                Integer assignedAppointments = agentPerformanceCareer.getAppointmentAssigned();
+                if (minAssignedAppointments != null && assignedAppointments < minAssignedAppointments) {
+                    continue;
+                }
+                if (maxAssignedAppointments != null && assignedAppointments > maxAssignedAppointments) {
+                    continue;
+                }
+
+                int assignments = assignedProperties + assignedAppointments;
+                if (minAssignments != null && assignments < minAssignments) {
+                    continue;
+                }
+                if (maxAssignments != null && assignments > maxAssignments) {
+                    continue;
+                }
+
+                Integer totalContracts = agentPerformanceCareer.getTotalContracts();
+                if (minContracts != null && totalContracts < minContracts) {
+                    continue;
+                }
+                if (maxContracts != null && totalContracts > maxContracts) {
+                    continue;
+                }
+
+                BigDecimal avgRating = agentPerformanceCareer.getAvgRating();
+                if (minAvgRating != null && avgRating.compareTo(BigDecimal.valueOf(minAvgRating)) < 0) {
+                    continue;
+                }
+                if (maxAvgRating != null && avgRating.compareTo(BigDecimal.valueOf(maxAvgRating)) > 0) {
+                    continue;
+                }
+
+                agentListItemList.add(
+                        SaleAgentListItem.builder()
+                                .id(agentUser.getId())
+                                .createdAt(agentUser.getCreatedAt())
+                                .updatedAt(agentUser.getUpdatedAt())
+                                .firstName(agentUser.getFirstName())
+                                .lastName(agentUser.getLastName())
+                                .avatarUrl(agentUser.getAvatarUrl())
+                                .ranking(ranking)
+                                .employeeCode(agentUser.getSaleAgent().getEmployeeCode())
+                                .point(performancePoint)
+                                .tier(null)
+                                .totalAssignments(assignments)
+                                .totalContracts(totalContracts)
+                                .rating(avgRating.doubleValue())
+                                .totalRates(agentPerformanceCareer.getTotalRates())
+                                .hiredDate(agentUser.getSaleAgent().getHiredDate())
+                                .build()
+                );
+            }
+        }
+
+        return new PageImpl<>(agentListItemList);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CustomerListItem> getAllCustomerItemsWithFilters(
+            Pageable pageable,
+            String name, Integer month, Integer year,
+            List<Constants.CustomerTierEnum> customerTierEnums,
+            Integer minLeadingScore, Integer maxLeadingScore,
+            Integer minViewings, Integer maxViewings,
+            BigDecimal minSpending, BigDecimal maxSpending,
+            Integer minContracts, Integer maxContracts,
+            Integer minPropertiesBought, Integer maxPropertiesBought,
+            Integer minPropertiesRented, Integer maxPropertiesRented,
+            Integer minPropertiesInvested, Integer maxPropertiesInvested,
+            Integer minRanking, Integer maxRanking,
+            LocalDateTime joinedDateFrom, LocalDateTime joinedDateTo,
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+    ) {
+        List<User> customers = userRepository.findAllByCustomerFullNameIsLikeIgnoreCaseAndRangeJoinedDateAndLocation(
+                name,
+                cityIds, districtIds, wardIds
+        );
+
+        List<CustomerListItem> customerListItemList = new ArrayList<>();
+
+        boolean findByMonth = month != null;
+
+        for (User customerUser : customers) {
+            // Filter by joinedDate (createdAt) in service layer
+            LocalDateTime customerJoinedDate = customerUser.getCreatedAt();
+            if (joinedDateFrom != null && customerJoinedDate.isBefore(joinedDateFrom)) {
+                continue;
+            }
+            if (joinedDateTo != null && customerJoinedDate.isAfter(joinedDateTo)) {
+                continue;
+            }
+
+            if (findByMonth) {
+                IndividualCustomerPotentialMonth customerPotentialMonth = rankingService.getCustomerMonth(
+                        customerUser.getId(),
+                        month,
+                        year
+                );
+
+                // Filter by customer tiers if provided
+                if (customerTierEnums != null && !customerTierEnums.isEmpty()) {
+                    boolean found = false;
+                    for (var tier : customerTierEnums) {
+                        if (customerPotentialMonth.getCustomerTier() == tier) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        continue;
+                    }
+                }
+
+                Integer leadScore = customerPotentialMonth.getLeadScore();
+                if (minLeadingScore != null && leadScore < minLeadingScore) {
+                    continue;
+                }
+                if (maxLeadingScore != null && leadScore > maxLeadingScore) {
+                    continue;
+                }
+
+                Integer ranking = customerPotentialMonth.getLeadPosition();
+                if (minRanking != null && ranking < minRanking) {
+                    continue;
+                }
+                if (maxRanking != null && ranking > maxRanking) {
+                    continue;
+                }
+
+                Integer viewingsRequested = customerPotentialMonth.getMonthViewingsRequested();
+                if (minViewings != null && viewingsRequested < minViewings) {
+                    continue;
+                }
+                if (maxViewings != null && viewingsRequested > maxViewings) {
+                    continue;
+                }
+
+                BigDecimal spending = customerPotentialMonth.getMonthSpending();
+                if (minSpending != null && spending.compareTo(minSpending) < 0) {
+                    continue;
+                }
+                if (maxSpending != null && spending.compareTo(maxSpending) > 0) {
+                    continue;
+                }
+
+                Integer monthContracts = customerPotentialMonth.getMonthContractsSigned();
+                if (minContracts != null && monthContracts < minContracts) {
+                    continue;
+                }
+                if (maxContracts != null && monthContracts > maxContracts) {
+                    continue;
+                }
+
+                Integer purchases = customerPotentialMonth.getMonthPurchases();
+                if (minPropertiesBought != null && purchases < minPropertiesBought) {
+                    continue;
+                }
+                if (maxPropertiesBought != null && purchases > maxPropertiesBought) {
+                    continue;
+                }
+
+                Integer rentals = customerPotentialMonth.getMonthRentals();
+                if (minPropertiesRented != null && rentals < minPropertiesRented) {
+                    continue;
+                }
+                if (maxPropertiesRented != null && rentals > maxPropertiesRented) {
+                    continue;
+                }
+
+                // Month data doesn't have invested properties, skip that filter for month view
+                int totalProperties = purchases + rentals;
+                if (minPropertiesInvested != null && totalProperties < minPropertiesInvested) {
+                    continue;
+                }
+                if (maxPropertiesInvested != null && totalProperties > maxPropertiesInvested) {
+                    continue;
+                }
+
+                customerListItemList.add(
+                        CustomerListItem.builder()
+                                .id(customerUser.getId())
+                                .firstName(customerUser.getFirstName())
+                                .lastName(customerUser.getLastName())
+                                .avatarUrl(customerUser.getAvatarUrl())
+                                .ranking(ranking)
+                                .point(leadScore)
+                                .tier(customerPotentialMonth.getCustomerTier().getValue())
+                                .totalSpending(spending)
+                                .totalViewings(viewingsRequested)
+                                .totalContracts(monthContracts)
+                                .createdAt(customerUser.getCreatedAt())
+                                .updatedAt(customerUser.getUpdatedAt())
+                                .build()
+                );
+            } else {
+                IndividualCustomerPotentialAll customerPotentialAll = rankingService.getCustomerAll(customerUser.getId());
+
+                Integer leadScore = customerPotentialAll.getLeadScore();
+                if (minLeadingScore != null && leadScore < minLeadingScore) {
+                    continue;
+                }
+                if (maxLeadingScore != null && leadScore > maxLeadingScore) {
+                    continue;
+                }
+
+                // leadPosition is String in All schema, need to parse it
+                Integer ranking = null;
+                try {
+                    ranking = Integer.parseInt(customerPotentialAll.getLeadPosition());
+                } catch (NumberFormatException e) {
+                    // If parsing fails, skip ranking filter
+                }
+                if (ranking != null) {
+                    if (minRanking != null && ranking < minRanking) {
+                        continue;
+                    }
+                    if (maxRanking != null && ranking > maxRanking) {
+                        continue;
+                    }
+                }
+
+                Integer viewingsRequested = customerPotentialAll.getViewingsRequested();
+                if (minViewings != null && viewingsRequested < minViewings) {
+                    continue;
+                }
+                if (maxViewings != null && viewingsRequested > maxViewings) {
+                    continue;
+                }
+
+                BigDecimal spending = customerPotentialAll.getSpending();
+                if (minSpending != null && spending.compareTo(minSpending) < 0) {
+                    continue;
+                }
+                if (maxSpending != null && spending.compareTo(maxSpending) > 0) {
+                    continue;
+                }
+
+                Integer totalContracts = customerPotentialAll.getTotalContractsSigned();
+                if (minContracts != null && totalContracts < minContracts) {
+                    continue;
+                }
+                if (maxContracts != null && totalContracts > maxContracts) {
+                    continue;
+                }
+
+                Integer purchases = customerPotentialAll.getTotalPurchases();
+                if (minPropertiesBought != null && purchases < minPropertiesBought) {
+                    continue;
+                }
+                if (maxPropertiesBought != null && purchases > maxPropertiesBought) {
+                    continue;
+                }
+
+                Integer rentals = customerPotentialAll.getTotalRentals();
+                if (minPropertiesRented != null && rentals < minPropertiesRented) {
+                    continue;
+                }
+                if (maxPropertiesRented != null && rentals > maxPropertiesRented) {
+                    continue;
+                }
+
+                int totalProperties = purchases + rentals;
+                if (minPropertiesInvested != null && totalProperties < minPropertiesInvested) {
+                    continue;
+                }
+                if (maxPropertiesInvested != null && totalProperties > maxPropertiesInvested) {
+                    continue;
+                }
+
+                customerListItemList.add(
+                        CustomerListItem.builder()
+                                .id(customerUser.getId())
+                                .firstName(customerUser.getFirstName())
+                                .lastName(customerUser.getLastName())
+                                .avatarUrl(customerUser.getAvatarUrl())
+                                .ranking(ranking)
+                                .point(leadScore)
+                                .tier(null)
+                                .totalSpending(spending)
+                                .totalViewings(viewingsRequested)
+                                .totalContracts(totalContracts)
+                                .createdAt(customerUser.getCreatedAt())
+                                .updatedAt(customerUser.getUpdatedAt())
+                                .build()
+                );
+            }
+        }
+
+        return new PageImpl<>(customerListItemList);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PropertyOwnerListItem> getAllPropertyOwnerItemsWithFilters(
+            Pageable pageable,
+            String name, Integer month, Integer year,
+            List<Constants.ContributionTierEnum> ownerTiers,
+            Integer minContributionPoint, Integer maxContributionPoint,
+            Integer minProperties, Integer maxProperties,
+            Integer minPropertiesForSale, Integer maxPropertiesForSale,
+            Integer minPropertiesForRents, Integer maxPropertiesForRents,
+            Integer minProjects, Integer maxProjects,
+            Integer minRanking, Integer maxRanking,
+            LocalDateTime joinedDateFrom, LocalDateTime joinedDateTo,
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds) {
+
+        List<PropertyOwnerListItem> ownerListItemList = new ArrayList<>();
+
+        List<User> propertyOwners = userRepository.findAllByPropertyOwnerFullNameIsLikeIgnoreCaseAndRangeJoinedDateAndLocation(
+                name,
+                cityIds, districtIds, wardIds
+        );
+
+        boolean findByMonth = month != null;
+
+        for (User ownerUser : propertyOwners) {
+            // Filter by joinedDate (createdAt) in service layer
+            LocalDateTime ownerJoinedDate = ownerUser.getCreatedAt();
+            if (joinedDateFrom != null && ownerJoinedDate.isBefore(joinedDateFrom)) {
+                continue;
+            }
+            if (joinedDateTo != null && ownerJoinedDate.isAfter(joinedDateTo)) {
+                continue;
+            }
+
+            if (findByMonth) {
+                IndividualPropertyOwnerContributionMonth ownerContributionMonth = rankingService.getPropertyOwnerMonth(
+                        ownerUser.getId(),
+                        month,
+                        year
+                );
+
+                // Filter by owner tiers if provided
+                if (ownerTiers != null && !ownerTiers.isEmpty()) {
+                    boolean found = false;
+                    for (var tier : ownerTiers) {
+                        if (ownerContributionMonth.getContributionTier() == tier) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        continue;
+                    }
+                }
+
+                Integer contributionPoint = ownerContributionMonth.getContributionPoint();
+                if (minContributionPoint != null && contributionPoint < minContributionPoint) {
+                    continue;
+                }
+                if (maxContributionPoint != null && contributionPoint > maxContributionPoint) {
+                    continue;
+                }
+
+                Integer ranking = ownerContributionMonth.getRankingPosition();
+                if (minRanking != null && ranking < minRanking) {
+                    continue;
+                }
+                if (maxRanking != null && ranking > maxRanking) {
+                    continue;
+                }
+
+                Integer totalProperties = ownerContributionMonth.getMonthTotalProperties();
+                if (minProperties != null && totalProperties < minProperties) {
+                    continue;
+                }
+                if (maxProperties != null && totalProperties > maxProperties) {
+                    continue;
+                }
+
+                Integer propertiesForSale = ownerContributionMonth.getMonthTotalForSales();
+                if (minPropertiesForSale != null && propertiesForSale < minPropertiesForSale) {
+                    continue;
+                }
+                if (maxPropertiesForSale != null && propertiesForSale > maxPropertiesForSale) {
+                    continue;
+                }
+
+                Integer propertiesForRents = ownerContributionMonth.getMonthTotalForRents();
+                if (minPropertiesForRents != null && propertiesForRents < minPropertiesForRents) {
+                    continue;
+                }
+                if (maxPropertiesForRents != null && propertiesForRents > maxPropertiesForRents) {
+                    continue;
+                }
+
+                // Calculate projects as properties sold + rented (assuming these are investment properties)
+                Integer propertiesSold = ownerContributionMonth.getMonthTotalPropertiesSold();
+                Integer propertiesRented = ownerContributionMonth.getMonthTotalPropertiesRented();
+                int projects = propertiesSold + propertiesRented;
+                if (minProjects != null && projects < minProjects) {
+                    continue;
+                }
+                if (maxProjects != null && projects > maxProjects) {
+                    continue;
+                }
+
+                ownerListItemList.add(
+                        PropertyOwnerListItem.builder()
+                                .id(ownerUser.getId())
+                                .firstName(ownerUser.getFirstName())
+                                .lastName(ownerUser.getLastName())
+                                .avatarUrl(ownerUser.getAvatarUrl())
+                                .ranking(ranking)
+                                .point(contributionPoint)
+                                .tier(ownerContributionMonth.getContributionTier().getValue())
+                                .totalValue(ownerContributionMonth.getMonthContributionValue())
+                                .totalProperties(totalProperties)
+                                .createdAt(ownerUser.getCreatedAt())
+                                .updatedAt(ownerUser.getUpdatedAt())
+                                .build()
+                );
+            } else {
+                IndividualPropertyOwnerContributionAll ownerContributionAll = rankingService.getPropertyOwnerAll(ownerUser.getId());
+
+                Integer contributionPoint = ownerContributionAll.getContributionPoint();
+                if (minContributionPoint != null && contributionPoint < minContributionPoint) {
+                    continue;
+                }
+                if (maxContributionPoint != null && contributionPoint > maxContributionPoint) {
+                    continue;
+                }
+
+                Integer ranking = ownerContributionAll.getRankingPosition();
+                if (minRanking != null && ranking < minRanking) {
+                    continue;
+                }
+                if (maxRanking != null && ranking > maxRanking) {
+                    continue;
+                }
+
+                Integer totalProperties = ownerContributionAll.getTotalProperties();
+                if (minProperties != null && totalProperties < minProperties) {
+                    continue;
+                }
+                if (maxProperties != null && totalProperties > maxProperties) {
+                    continue;
+                }
+
+                // All schema doesn't have separate for_sale/for_rent counts
+                // Use sold/rented as approximation or skip these filters
+                Integer propertiesSold = ownerContributionAll.getTotalPropertiesSold();
+                Integer propertiesRented = ownerContributionAll.getTotalPropertiesRented();
+
+                if (minPropertiesForSale != null && propertiesSold < minPropertiesForSale) {
+                    continue;
+                }
+                if (maxPropertiesForSale != null && propertiesSold > maxPropertiesForSale) {
+                    continue;
+                }
+
+                if (minPropertiesForRents != null && propertiesRented < minPropertiesForRents) {
+                    continue;
+                }
+                if (maxPropertiesForRents != null && propertiesRented > maxPropertiesForRents) {
+                    continue;
+                }
+
+                int projects = propertiesSold + propertiesRented;
+                if (minProjects != null && projects < minProjects) {
+                    continue;
+                }
+                if (maxProjects != null && projects > maxProjects) {
+                    continue;
+                }
+
+                ownerListItemList.add(
+                        PropertyOwnerListItem.builder()
+                                .id(ownerUser.getId())
+                                .firstName(ownerUser.getFirstName())
+                                .lastName(ownerUser.getLastName())
+                                .avatarUrl(ownerUser.getAvatarUrl())
+                                .ranking(ranking)
+                                .point(contributionPoint)
+                                .tier(rankingService.getCurrentTier(ownerUser.getId(), Constants.RoleEnum.PROPERTY_OWNER))
+                                .totalValue(ownerContributionAll.getContributionValue())
+                                .totalProperties(totalProperties)
+                                .createdAt(ownerUser.getCreatedAt())
+                                .updatedAt(ownerUser.getUpdatedAt())
+                                .build()
+                );
+            }
+        }
+
+        return new PageImpl<>(ownerListItemList);
     }
 }
