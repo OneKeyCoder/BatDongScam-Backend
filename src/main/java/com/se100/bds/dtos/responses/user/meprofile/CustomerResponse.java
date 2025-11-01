@@ -19,7 +19,6 @@ public class CustomerResponse {
     private int totalPurchases;
     private int currentMonthRentals;
     private int totalRentals;
-    private int currentMonthSearches;
     private int currentMonthViewings;
     private Constants.CustomerTierEnum customerTier;
     private int leadScore;

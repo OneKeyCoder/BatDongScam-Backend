@@ -10,9 +10,11 @@ import com.se100.bds.models.entities.location.Ward;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.user.Customer;
 import com.se100.bds.models.entities.user.PropertyOwner;
+import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.exceptions.NotFoundException;
 import com.se100.bds.repositories.domains.location.WardRepository;
+import com.se100.bds.repositories.domains.user.SaleAgentRepository;
 import com.se100.bds.repositories.domains.user.UserRepository;
 import com.se100.bds.securities.JwtUserDetails;
 import com.se100.bds.services.MessageSourceService;
@@ -49,6 +51,8 @@ import java.util.UUID;
 @Slf4j
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final SaleAgentRepository saleAgentRepository;
+
     private final PasswordEncoder passwordEncoder;
     private final MessageSourceService messageSourceService;
     private final UserMapper userMapper;
@@ -59,14 +63,17 @@ public class UserServiceImpl implements UserService {
 
     public UserServiceImpl(
             UserRepository userRepository,
+            SaleAgentRepository saleAgentRepository,
             PasswordEncoder passwordEncoder,
             MessageSourceService messageSourceService,
             UserMapper userMapper,
             @Lazy PropertyService propertyService,
             RankingService rankingService,
             CloudinaryService cloudinaryService,
-            WardRepository wardRepository) {
+            WardRepository wardRepository
+    ) {
         this.userRepository = userRepository;
+        this.saleAgentRepository = saleAgentRepository;
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
         this.userMapper = userMapper;
@@ -94,6 +101,23 @@ public class UserServiceImpl implements UserService {
         } else {
             log.warn("[JWT] User not authenticated!");
             throw new BadCredentialsException("Bad credentials");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void approveAccount(UUID propOwnerId, boolean approve) {
+        try {
+            User propertyOwner = findById(propOwnerId);
+            if (propertyOwner.getStatus() == Constants.StatusProfileEnum.PENDING_APPROVAL) {
+                if (approve)
+                    propertyOwner.setStatus(Constants.StatusProfileEnum.ACTIVE);
+                else
+                    propertyOwner.setStatus(Constants.StatusProfileEnum.REJECTED);
+                userRepository.save(propertyOwner);
+            }
+        } catch (Exception exception) {
+            log.warn("[JWT] User details not found!");
         }
     }
 
@@ -206,7 +230,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public Page<User> findAll(Pageable pageable) {
-        return userRepository.findAll(pageable);
+        return userRepository.findAllWithLocation(pageable);
     }
 
     @Override
@@ -214,6 +238,13 @@ public class UserServiceImpl implements UserService {
     public User findById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SaleAgent findSaleAgentById(UUID agentId) {
+        return saleAgentRepository.findById(agentId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + agentId));
     }
 
     @Override

@@ -1,8 +1,10 @@
 package com.se100.bds.services.domains.property.impl;
 
 import com.se100.bds.dtos.responses.property.PropertyDetails;
+import com.se100.bds.exceptions.NotFoundException;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.property.PropertyType;
+import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.mappers.PropertyMapper;
 import com.se100.bds.repositories.domains.property.PropertyRepository;
@@ -198,5 +200,15 @@ public class PropertyServiceImpl implements PropertyService {
         } else {
             return propertyRepository.findAllByCustomer_IdAndStatusIn(customerId, statuses);
         }
+    }
+
+    @Override
+    @Transactional
+    public void assignAgentToProperty(UUID agentId, UUID propertyId) {
+        SaleAgent salesAgent = userService.findSaleAgentById(agentId);
+        Property assignedProperty = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + propertyId));
+        assignedProperty.setAssignedAgent(salesAgent);
+
     }
 }

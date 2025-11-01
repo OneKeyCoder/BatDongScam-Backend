@@ -26,4 +26,6 @@ public interface PropertyService {
     Page<PropertyType> getAllTypes(Pageable pageable);
     PropertyDetails getPropertyDetailsById(UUID propertyId);
     List<Property> getAllByUserIdAndStatus(UUID ownerId, UUID customerId, UUID salesAgentId, List<Constants.PropertyStatusEnum> statuses);
+    void assignAgentToProperty(UUID agentId, UUID propertyId);
+
 }

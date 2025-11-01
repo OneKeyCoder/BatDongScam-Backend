@@ -3,6 +3,7 @@ package com.se100.bds.services.domains.user;
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
 import com.se100.bds.dtos.responses.user.otherprofile.UserProfileResponse;
+import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.securities.JwtUserDetails;
 import com.se100.bds.utils.Constants;
@@ -19,6 +20,8 @@ import java.util.UUID;
 public interface UserService {
     User getUser();
 
+    void approveAccount(UUID propOwnerId, boolean approve);
+
     List<User> getAllByName(String name);
 
     MeResponse<?> getAccount();
@@ -32,6 +35,8 @@ public interface UserService {
     Page<User> findAll(Pageable pageable);
 
     User findById(UUID id);
+
+    SaleAgent findSaleAgentById(UUID agentId);
 
     User updateStatus(UUID id, String status);
 

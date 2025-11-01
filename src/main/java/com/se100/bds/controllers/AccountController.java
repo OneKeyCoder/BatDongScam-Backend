@@ -21,7 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -65,7 +65,7 @@ public class AccountController extends AbstractBaseController {
         return responseFactory.successSingle(meResponse, "Successful operation");
     }
 
-    @PostAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     @Operation(
             summary = "Get all users with pagination",
@@ -99,5 +99,47 @@ public class AccountController extends AbstractBaseController {
         Page<User> userPage = userService.findAll(pageable);
         Page<MeResponse> response = userMapper.mapToPage(userPage, MeResponse.class);
         return responseFactory.successPage(response, "Users retrieved successfully");
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{propOwnerId}/{approve}/approve")
+    @Operation(
+            summary = "Approve a property owner account",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Account approved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<Void>> approveAccount(
+            @Parameter(description = "Property owner ID", required = true)
+            @PathVariable UUID propOwnerId,
+            @Parameter(description = "approve(true) or reject", deprecated = true)
+            @PathVariable Boolean approve
+    ) {
+        userService.approveAccount(propOwnerId, approve);
+        return responseFactory.successSingle(null, "Account approved successfully");
     }
 }

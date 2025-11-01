@@ -2,6 +2,8 @@ package com.se100.bds.repositories.domains.user;
 
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.utils.Constants;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -22,6 +24,10 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     boolean existsByEmail(String email);
 
     List<User> findAllByRole(Constants.RoleEnum role);
+
+    @EntityGraph(attributePaths = {"ward", "ward.district", "ward.district.city"})
+    @Query("SELECT u FROM User u")
+    Page<User> findAllWithLocation(Pageable pageable);
 
     @EntityGraph(attributePaths = {"ward", "ward.district", "ward.district.city"})
     @Query("SELECT u FROM User u WHERE u.id = :id")

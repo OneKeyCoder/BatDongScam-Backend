@@ -40,4 +40,5 @@ public class MeResponse<T> extends AbstractBaseDataResponse {
     private String backIdPicturePath;
     private LocalDateTime lastLoginAt;
     private T profile;
+    private T statistic;
 }
