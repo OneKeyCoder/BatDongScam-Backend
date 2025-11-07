@@ -53,7 +53,7 @@ public class PropertyServiceImpl implements PropertyService {
                                                      UUID agentId, String agentName, List<Constants.PerformanceTierEnum> agentTier,
                                                      BigDecimal minPrice, BigDecimal maxPrice, BigDecimal minArea, BigDecimal maxArea,
                                                      Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors,
-                                                     String houseOrientation, String balconyOrientation,
+                                                     Constants.OrientationEnum houseOrientation, Constants.OrientationEnum balconyOrientation,
                                                      List<Constants.TransactionTypeEnum> transactionType,
                                                      List<Constants.PropertyStatusEnum> statuses, boolean topK,
                                                      Pageable pageable) {
@@ -155,8 +155,8 @@ public class PropertyServiceImpl implements PropertyService {
                 bathrooms,
                 bedrooms,
                 floors,
-                houseOrientation,
-                balconyOrientation,
+                houseOrientation.getValue(),
+                balconyOrientation.getValue(),
                 transactionTypeStrings,
                 statusStrings,
                 currentUser != null ? currentUser.getId() : null

@@ -1,5 +1,6 @@
 package com.se100.bds.services.domains.customer.impl;
 
+import com.se100.bds.models.entities.user.User;
 import com.se100.bds.models.schemas.customer.AbstractCustomerPreferenceMongoSchema;
 import com.se100.bds.repositories.domains.mongo.customer.*;
 import com.se100.bds.services.domains.customer.CustomerFavoriteService;
@@ -82,6 +83,17 @@ public class CustomerFavoriteServiceImpl implements CustomerFavoriteService {
             return repository.existsByCustomerIdAndRefId(customerId, refId);
         } catch (Exception e) {
             log.error("Error checking like status for type {} and id {}: {}", likeType, refId, e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isLikeByMe(UUID refId, Constants.LikeTypeEnum likeType) {
+        try {
+            User currentUser = userService.getUser();
+            return isLike(refId, currentUser.getId(), likeType);
+        } catch (Exception e) {
+            log.error("Error checking like status for type {} and id {}", likeType, e.getMessage());
             return false;
         }
     }
