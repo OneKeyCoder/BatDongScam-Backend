@@ -326,6 +326,23 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum LocationEnum {
+        CITY("CITY"),
+        WARD("WARD"),
+        DISTRICT("DISTRICT");
+
+        private final String value;
+
+        public static LocationEnum get(final String name) {
+            return Stream.of(LocationEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid orientation name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum OrientationEnum {
         NORTH("NORTH"),
         SOUTH("SOUTH"),

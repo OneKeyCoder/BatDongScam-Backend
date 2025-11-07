@@ -20,7 +20,7 @@ public interface PropertyService {
                                               UUID agentId, String agentName,
                                               List<Constants.PerformanceTierEnum> agentTier,
                                               BigDecimal minPrice, BigDecimal maxPrice, BigDecimal minArea, BigDecimal maxArea,
-                                              Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors, String houseOrientation, String balconyOrientation,
+                                              Integer rooms, Integer bathrooms, Integer bedrooms, Integer floors, Constants.OrientationEnum houseOrientation, Constants.OrientationEnum balconyOrientation,
                                               List<Constants.TransactionTypeEnum> transactionType, List<Constants.PropertyStatusEnum> statuses, boolean topK,
                                               Pageable pageable);
     Page<PropertyType> getAllTypes(Pageable pageable);

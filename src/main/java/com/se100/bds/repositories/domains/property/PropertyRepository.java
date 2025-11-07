@@ -264,4 +264,13 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
         AND (COALESCE(:statuses, NULL) IS NULL OR p.status IN :statuses)
     """)
     List<Property> findAllByOwner_IdAndAssignedAgent_IdAndStatusIn(@Param("ownerId") UUID ownerId, @Param("assignedAgentId") UUID assignedAgentId, @Param("statuses") Collection<Constants.PropertyStatusEnum> statuses);
+
+    @Query("SELECT COUNT(p) FROM Property p WHERE p.ward.id = :wardId AND p.status = com.se100.bds.utils.Constants.PropertyStatusEnum.AVAILABLE")
+    int countActivePropertiesByWardId(@Param("wardId") UUID wardId);
+
+    @Query("SELECT COUNT(p) FROM Property p WHERE p.ward.district.id = :districtId AND p.status = com.se100.bds.utils.Constants.PropertyStatusEnum.AVAILABLE")
+    int countActivePropertiesByDistrictId(@Param("districtId") UUID districtId);
+
+    @Query("SELECT COUNT(p) FROM Property p WHERE p.ward.district.city.id = :cityId AND p.status = com.se100.bds.utils.Constants.PropertyStatusEnum.AVAILABLE")
+    int countActivePropertiesByCityId(@Param("cityId") UUID cityId);
 }

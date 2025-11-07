@@ -7,4 +7,5 @@ import java.util.UUID;
 public interface CustomerFavoriteService {
     boolean like(UUID refId, Constants.LikeTypeEnum likeType);
     boolean isLike(UUID refId, UUID customerId, Constants.LikeTypeEnum likeType);
+    boolean isLikeByMe(UUID refId, Constants.LikeTypeEnum likeType);
 }

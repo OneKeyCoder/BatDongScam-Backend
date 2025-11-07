@@ -9,7 +9,8 @@ import com.se100.bds.dtos.responses.SuccessResponse;
 import com.se100.bds.dtos.responses.auth.TokenResponse;
 import com.se100.bds.dtos.responses.error.DetailedErrorResponse;
 import com.se100.bds.dtos.responses.error.ErrorResponse;
-import com.se100.bds.dtos.responses.location.CityResponse;
+import com.se100.bds.dtos.responses.location.LocationCardResponse;
+import com.se100.bds.dtos.responses.location.LocationDetailsResponse;
 import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.PropertyTypeResponse;
 import com.se100.bds.dtos.responses.property.SimplePropertyCard;
@@ -35,7 +36,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -277,10 +277,10 @@ public class PublicController extends AbstractBaseController {
             @RequestParam(required = false) Integer floors,
 
             @Parameter(description = "House orientation (e.g., EAST, WEST, NORTH, SOUTH)")
-            @RequestParam(required = false) String houseOrientation,
+            @RequestParam(required = false) Constants.OrientationEnum houseOrientation,
 
             @Parameter(description = "Balcony orientation (e.g., EAST, WEST, NORTH, SOUTH)")
-            @RequestParam(required = false) String balconyOrientation,
+            @RequestParam(required = false) Constants.OrientationEnum balconyOrientation,
 
             @Parameter(description = "List of desire Transaction type (e.g., SALE, RENT)")
             @RequestParam(required = false) List<Constants.TransactionTypeEnum> transactionType,
@@ -383,7 +383,7 @@ public class PublicController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<CityResponse>> getTopCities(
+    public ResponseEntity<PageResponse<LocationCardResponse>> getTopCities(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
 
@@ -394,7 +394,7 @@ public class PublicController extends AbstractBaseController {
 
         Pageable pageable = createPageable(page, limit, null, null);
         Page<City> topCities = locationService.topMostSearchedCities(pageable);
-        Page<CityResponse> cityResponses = locationMapper.mapToPage(topCities, CityResponse.class);
+        Page<LocationCardResponse> cityResponses = locationMapper.mapToPage(topCities, LocationCardResponse.class);
 
         return responseFactory.successPage(cityResponses, "Top most searched cities retrieved successfully");
     }
@@ -445,6 +445,134 @@ public class PublicController extends AbstractBaseController {
                 : String.format("Child %ss retrieved successfully", searchType.name().toLowerCase());
 
         return responseFactory.successSingle(childLocations, message);
+    }
+
+    @GetMapping("/locations/cards")
+    @Operation(
+            summary = "Get all location cards with filters and pagination",
+            description = "Retrieve a paginated list of location cards (cities, districts, or wards) with optional filters",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid parameters",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<LocationCardResponse>> getAllLocationCardsWithFilters(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+
+            @Parameter(description = "Number of items per page")
+            @RequestParam(defaultValue = "15") int limit,
+
+            @Parameter(description = "Sort direction: asc or desc")
+            @RequestParam(defaultValue = "desc") String sortType,
+
+            @Parameter(description = "Field to sort by")
+            @RequestParam(required = false) String sortBy,
+
+            @Parameter(description = "Keyword to search in location name")
+            @RequestParam(required = false) String keyWord,
+
+            @Parameter(description = "List of city IDs to filter by")
+            @RequestParam(required = false) List<UUID> cityIds,
+
+            @Parameter(description = "List of district IDs to filter by")
+            @RequestParam(required = false) List<UUID> districtIds,
+
+            @Parameter(description = "Location type: CITY, DISTRICT, or WARD")
+            @RequestParam(required = true) Constants.LocationEnum locationTypeEnum,
+
+            @Parameter(description = "Filter by active status")
+            @RequestParam(required = false) Boolean isActive,
+
+            @Parameter(description = "Minimum average land price")
+            @RequestParam(required = false) BigDecimal minAvgLandPrice,
+
+            @Parameter(description = "Maximum average land price")
+            @RequestParam(required = false) BigDecimal maxAvgLandPrice,
+
+            @Parameter(description = "Minimum area")
+            @RequestParam(required = false) BigDecimal minArea,
+
+            @Parameter(description = "Maximum area")
+            @RequestParam(required = false) BigDecimal maxArea,
+
+            @Parameter(description = "Minimum population")
+            @RequestParam(required = false) Integer minPopulation,
+
+            @Parameter(description = "Maximum population")
+            @RequestParam(required = false) Integer maxPopulation
+    ) {
+        log.info("Getting all location cards with filters - page: {}, limit: {}, locationTypeEnum: {}", page, limit, locationTypeEnum);
+
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<LocationCardResponse> locationCards = locationService.findAllLocationCardsWithFilter(
+                pageable,
+                keyWord,
+                cityIds,
+                districtIds,
+                locationTypeEnum,
+                isActive,
+                minAvgLandPrice,
+                maxAvgLandPrice,
+                minArea,
+                maxArea,
+                minPopulation,
+                maxPopulation
+        );
+
+        return responseFactory.successPage(locationCards, "Location cards retrieved successfully");
+    }
+
+    @GetMapping("/locations/{locationId}/details")
+    @Operation(
+            summary = "Get location details by ID and type",
+            description = "Retrieve detailed information about a specific location (city, district, or ward)",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Location not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<LocationDetailsResponse>> getLocationDetails(
+            @Parameter(description = "Location ID", required = true)
+            @PathVariable UUID locationId,
+
+            @Parameter(description = "Location type: CITY, DISTRICT, or WARD", required = true)
+            @RequestParam Constants.LocationEnum locationTypeEnum
+    ) {
+        log.info("Getting location details - locationId: {}, locationTypeEnum: {}", locationId, locationTypeEnum);
+
+        LocationDetailsResponse locationDetails = 
+                locationService.getLocationDetails(locationId, locationTypeEnum);
+
+        return responseFactory.successSingle(locationDetails, "Location details retrieved successfully");
     }
 
     @GetMapping("/locations/property-types")
