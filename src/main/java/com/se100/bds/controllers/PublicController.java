@@ -7,6 +7,8 @@ import com.se100.bds.dtos.responses.PageResponse;
 import com.se100.bds.dtos.responses.SingleResponse;
 import com.se100.bds.dtos.responses.SuccessResponse;
 import com.se100.bds.dtos.responses.auth.TokenResponse;
+import com.se100.bds.dtos.responses.document.DocumentTypeDetailsResponse;
+import com.se100.bds.dtos.responses.document.DocumentTypeListItemResponse;
 import com.se100.bds.dtos.responses.error.DetailedErrorResponse;
 import com.se100.bds.dtos.responses.error.ErrorResponse;
 import com.se100.bds.dtos.responses.location.LocationCardResponse;
@@ -20,6 +22,7 @@ import com.se100.bds.mappers.PropertyMapper;
 import com.se100.bds.models.entities.location.City;
 import com.se100.bds.models.entities.property.PropertyType;
 import com.se100.bds.services.domains.auth.AuthService;
+import com.se100.bds.services.domains.document.DocumentService;
 import com.se100.bds.services.domains.location.LocationService;
 import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.domains.user.UserService;
@@ -61,6 +64,7 @@ public class PublicController extends AbstractBaseController {
     private final PropertyService propertyService;
     private final LocationService locationService;
     private final LocationMapper locationMapper;
+    private final DocumentService documentService;
 
     // ==================== AUTH ENDPOINTS ====================
 
@@ -618,6 +622,90 @@ public class PublicController extends AbstractBaseController {
         Page<PropertyTypeResponse> propertyTypeResponses = propertyMapper.mapToPage(propertyTypes, PropertyTypeResponse.class);
 
         return responseFactory.successPage(propertyTypeResponses, "Property types retrieved successfully");
+    }
+
+    // ==================== DOCUMENT TYPE ENDPOINTS ====================
+
+    @GetMapping("/document-types")
+    @Operation(
+            summary = "Get all document types with optional filter",
+            description = "Retrieve a paginated list of document types with optional compulsory filter",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid parameters",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<DocumentTypeListItemResponse>> getAllDocumentTypes(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+
+            @Parameter(description = "Number of items per page")
+            @RequestParam(defaultValue = "10") int limit,
+
+            @Parameter(description = "Sort direction: asc or desc")
+            @RequestParam(defaultValue = "desc") String sortType,
+
+            @Parameter(description = "Field to sort by")
+            @RequestParam(required = false) String sortBy,
+
+            @Parameter(description = "Filter by compulsory status")
+            @RequestParam(required = false) Boolean isCompulsory
+    ) {
+        log.info("Getting all document types - page: {}, limit: {}, isCompulsory: {}", page, limit, isCompulsory);
+
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<DocumentTypeListItemResponse> documentTypes =
+                documentService.getAllWithFilter(pageable, isCompulsory);
+
+        return responseFactory.successPage(documentTypes, "Document types retrieved successfully");
+    }
+
+    @GetMapping("/document-types/{id}")
+    @Operation(
+            summary = "Get document type details by ID",
+            description = "Retrieve detailed information about a specific document type",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Document type not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<DocumentTypeDetailsResponse>> getDocumentTypeById(
+            @Parameter(description = "Document type ID", required = true)
+            @PathVariable UUID id
+    ) {
+        log.info("Getting document type details - id: {}", id);
+
+        DocumentTypeDetailsResponse documentType = documentService.getById(id);
+
+        return responseFactory.successSingle(documentType, "Document type details retrieved successfully");
     }
 
     // ==================== ACCOUNT ENDPOINTS ====================

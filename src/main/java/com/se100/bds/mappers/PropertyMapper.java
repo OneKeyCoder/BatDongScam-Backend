@@ -1,6 +1,6 @@
 package com.se100.bds.mappers;
 
-import com.se100.bds.dtos.responses.property.DocumentResponse;
+import com.se100.bds.dtos.responses.document.DocumentResponse;
 import com.se100.bds.dtos.responses.property.MediaResponse;
 import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.SimplePropertyCard;
@@ -9,9 +9,7 @@ import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.repositories.dtos.DocumentProjection;
 import com.se100.bds.repositories.dtos.MediaProjection;
 import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
-import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.dtos.results.PropertyCard;
-import com.se100.bds.utils.Constants;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
