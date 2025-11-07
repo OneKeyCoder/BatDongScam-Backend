@@ -1,4 +1,4 @@
-package com.se100.bds.dtos.responses.property;
+package com.se100.bds.dtos.responses.document;
 
 import com.se100.bds.dtos.responses.AbstractBaseDataResponse;
 import lombok.Getter;
