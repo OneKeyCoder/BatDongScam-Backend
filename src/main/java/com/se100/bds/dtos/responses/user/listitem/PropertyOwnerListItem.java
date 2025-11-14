@@ -1,4 +1,4 @@
-package com.se100.bds.dtos.responses.adminlistitem;
+package com.se100.bds.dtos.responses.user.listitem;
 
 import com.se100.bds.dtos.responses.AbstractBaseDataResponse;
 import lombok.Getter;

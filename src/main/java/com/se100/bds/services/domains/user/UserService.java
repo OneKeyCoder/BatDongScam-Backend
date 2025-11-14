@@ -2,9 +2,9 @@ package com.se100.bds.services.domains.user;
 
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
 import com.se100.bds.dtos.requests.account.UpdateAccountDto;
-import com.se100.bds.dtos.responses.adminlistitem.CustomerListItem;
-import com.se100.bds.dtos.responses.adminlistitem.PropertyOwnerListItem;
-import com.se100.bds.dtos.responses.adminlistitem.SaleAgentListItem;
+import com.se100.bds.dtos.responses.user.listitem.CustomerListItem;
+import com.se100.bds.dtos.responses.user.listitem.PropertyOwnerListItem;
+import com.se100.bds.dtos.responses.user.listitem.SaleAgentListItem;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
 import com.se100.bds.dtos.responses.user.otherprofile.UserProfileResponse;
 import com.se100.bds.models.entities.user.SaleAgent;
