@@ -3,7 +3,6 @@ package com.se100.bds.dtos.responses.appointment;
 import com.se100.bds.dtos.responses.AbstractBaseDataResponse;
 import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
 import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
-import com.se100.bds.dtos.responses.user.simple.SimpleUserResponse;
 import com.se100.bds.utils.Constants;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,4 +37,7 @@ public class ViewingDetails extends AbstractBaseDataResponse {
 
     private PropertyOwnerSimpleCard propertyOwner;
     private SalesAgentSimpleCard salesAgent;
+
+    private List<String> attachedDocuments;
+    private String notes;
 }

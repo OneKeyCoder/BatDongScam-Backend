@@ -33,6 +33,7 @@ public class AppointmentMapper extends BaseMapper {
                     mapper.map(src -> src.getProperty().getFloors(), ViewingDetails::setFloors);
                     mapper.map(src -> src.getProperty().getHouseOrientation(), ViewingDetails::setHouseOrientation);
                     mapper.map(src -> src.getProperty().getBalconyOrientation(), ViewingDetails::setBalconyOrientation);
+                    mapper.map(Appointment::getAgentNotes, ViewingDetails::setNotes);
                 });
     }
 

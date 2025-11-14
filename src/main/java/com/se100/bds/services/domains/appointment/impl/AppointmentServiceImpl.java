@@ -6,6 +6,7 @@ import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
 import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
 import com.se100.bds.mappers.AppointmentMapper;
 import com.se100.bds.models.entities.appointment.Appointment;
+import com.se100.bds.models.entities.document.IdentificationDocument;
 import com.se100.bds.models.entities.property.Media;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceCareer;
@@ -96,9 +97,13 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .map(Media::getFilePath)
                 .collect(Collectors.toList());
         String fullAddress = appointment.getProperty().getFullAddress();
+        List<String> documentList = appointment.getProperty().getDocuments().stream()
+                .map(IdentificationDocument::getFilePath)
+                .collect(Collectors.toList());
 
         viewingDetails.setImagesList(imagesList);
         viewingDetails.setImages(imagesList.size());
+        viewingDetails.setAttachedDocuments(documentList);
         viewingDetails.setFullAddress(fullAddress);
 
         String ownerTier = rankingService.getCurrentTier(
