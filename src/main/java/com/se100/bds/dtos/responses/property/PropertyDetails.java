@@ -2,7 +2,7 @@ package com.se100.bds.dtos.responses.property;
 
 import com.se100.bds.dtos.responses.AbstractBaseDataResponse;
 import com.se100.bds.dtos.responses.document.DocumentResponse;
-import com.se100.bds.dtos.responses.user.SimpleUserResponse;
+import com.se100.bds.dtos.responses.user.simple.SimpleUserResponse;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

@@ -1,13 +1,21 @@
 package com.se100.bds.services.domains.appointment.impl;
 
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
+import com.se100.bds.dtos.responses.appointment.ViewingDetails;
+import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
+import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
 import com.se100.bds.mappers.AppointmentMapper;
 import com.se100.bds.models.entities.appointment.Appointment;
+import com.se100.bds.models.entities.property.Media;
 import com.se100.bds.models.entities.user.User;
+import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceCareer;
+import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceMonth;
 import com.se100.bds.repositories.domains.appointment.AppointmentRepository;
 import com.se100.bds.services.domains.appointment.AppointmentService;
+import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -27,6 +36,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final UserService userService;
+    private final RankingService rankingService;
     private final AppointmentMapper appointmentMapper;
 
     @Override
@@ -73,5 +83,50 @@ public class AppointmentServiceImpl implements AppointmentService {
         ).collect(Collectors.toList());
 
         return new PageImpl<>(viewingCardDtos, pageable, viewingCardDtos.size());
+    }
+
+    @Override
+    public ViewingDetails getViewingDetails(UUID id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id"));
+
+        ViewingDetails viewingDetails = appointmentMapper.mapTo(appointment, ViewingDetails.class);
+
+        List<String> imagesList = appointment.getProperty().getMediaList().stream()
+                .map(Media::getFilePath)
+                .collect(Collectors.toList());
+        String fullAddress = appointment.getProperty().getFullAddress();
+
+        viewingDetails.setImagesList(imagesList);
+        viewingDetails.setImages(imagesList.size());
+        viewingDetails.setFullAddress(fullAddress);
+
+        String ownerTier = rankingService.getCurrentTier(
+                appointment.getProperty().getOwner().getId(),
+                Constants.RoleEnum.PROPERTY_OWNER
+        );
+        PropertyOwnerSimpleCard ownerCard = appointmentMapper.buildOwnerCard(
+                appointment.getProperty().getOwner(),
+                ownerTier
+        );
+        viewingDetails.setPropertyOwner(ownerCard);
+
+        IndividualSalesAgentPerformanceMonth agentRanking = rankingService.getSaleAgentCurrentMonth(
+                appointment.getAgent().getId()
+        );
+
+        IndividualSalesAgentPerformanceCareer agentRankingCareer = rankingService.getSaleAgentCareer(
+                appointment.getAgent().getId()
+        );
+
+        SalesAgentSimpleCard agentCard = appointmentMapper.buildAgentCard(
+                appointment.getAgent(),
+                agentRanking.getPerformanceTier().getValue(),
+                agentRankingCareer.getAvgRating().doubleValue(),
+                agentRankingCareer.getTotalRates()
+        );
+        viewingDetails.setSalesAgent(agentCard);
+
+        return viewingDetails;
     }
 }

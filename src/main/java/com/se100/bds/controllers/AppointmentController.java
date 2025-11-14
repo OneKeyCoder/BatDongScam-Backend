@@ -2,7 +2,10 @@ package com.se100.bds.controllers;
 
 import com.se100.bds.controllers.base.AbstractBaseController;
 import com.se100.bds.dtos.responses.PageResponse;
+import com.se100.bds.dtos.responses.SingleResponse;
+import com.se100.bds.dtos.responses.SuccessResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
+import com.se100.bds.dtos.responses.appointment.ViewingDetails;
 import com.se100.bds.services.domains.appointment.AppointmentService;
 import com.se100.bds.utils.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,10 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 import static com.se100.bds.utils.Constants.SECURITY_SCHEME_NAME;
 
@@ -50,5 +52,17 @@ public class AppointmentController extends AbstractBaseController {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<ViewingCardDto> viewingCardDtos = appointmentService.myViewingCards(pageable, statusEnum, day, month, year);
         return responseFactory.successPage(viewingCardDtos, "My viewings retrieved successfully");
+    }
+
+    @GetMapping("/viewing-details/{id}")
+    @Operation(
+            summary = "Get viewing details by appointment ID",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<ViewingDetails>> getViewingDetails(
+            @Parameter(description = "Appointment ID")
+            @PathVariable UUID id) {
+        ViewingDetails viewingDetails = appointmentService.getViewingDetails(id);
+        return responseFactory.successSingle(viewingDetails, "Viewing details retrieved successfully");
     }
 }

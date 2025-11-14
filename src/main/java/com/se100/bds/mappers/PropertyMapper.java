@@ -4,7 +4,7 @@ import com.se100.bds.dtos.responses.document.DocumentResponse;
 import com.se100.bds.dtos.responses.property.MediaResponse;
 import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.SimplePropertyCard;
-import com.se100.bds.dtos.responses.user.SimpleUserResponse;
+import com.se100.bds.dtos.responses.user.simple.SimpleUserResponse;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.repositories.dtos.DocumentProjection;
 import com.se100.bds.repositories.dtos.MediaProjection;
