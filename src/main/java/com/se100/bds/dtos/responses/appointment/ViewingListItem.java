@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class ViewingListItemDto extends AbstractBaseDataResponse {
+public class ViewingListItem extends AbstractBaseDataResponse {
     private String propertyName;
     private BigDecimal price;
     private BigDecimal area;

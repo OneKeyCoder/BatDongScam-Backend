@@ -3,6 +3,8 @@ package com.se100.bds.controllers;
 import com.se100.bds.controllers.base.AbstractBaseController;
 import com.se100.bds.dtos.responses.PageResponse;
 import com.se100.bds.dtos.responses.SingleResponse;
+import com.se100.bds.dtos.responses.appointment.ViewingListItem;
+import com.se100.bds.dtos.responses.property.SimplePropertyCard;
 import com.se100.bds.dtos.responses.user.listitem.FreeAgentListItem;
 import com.se100.bds.services.domains.appointment.AppointmentService;
 import com.se100.bds.services.domains.property.PropertyService;
@@ -117,6 +119,104 @@ public class AssignmentController extends AbstractBaseController {
         } else {
             throw new IllegalArgumentException("Invalid target type. Must be 'PROPERTY' or 'APPOINTMENT'");
         }
+
+        return responseFactory.successSingle(result, message);
+    }
+
+    @PreAuthorize("hasRole('SALESAGENT')")
+    @GetMapping("/my-viewing-list")
+    @Operation(
+            summary = "Agent Get their own viewing list with filters",
+            description = "Get paginated list of appointments assigned to the current agent with filtering options",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<PageResponse<ViewingListItem>> getMyViewingListItems(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Number of items per page")
+            @RequestParam(defaultValue = "10") int limit,
+            @Parameter(description = "Sort direction: asc or desc")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Field to sort by")
+            @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Customer name to filter by")
+            @RequestParam(required = false) String customerName,
+            @Parameter(description = "Day to filter by")
+            @RequestParam(required = false) Integer day,
+            @Parameter(description = "Month to filter by")
+            @RequestParam(required = false) Integer month,
+            @Parameter(description = "Year to filter by")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Appointment status enums to filter by")
+            @RequestParam(required = false) List<Constants.AppointmentStatusEnum> statusEnums) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ViewingListItem> viewingListItems = appointmentService.getMyViewingListItems(
+                pageable,
+                customerName,
+                day, month, year,
+                statusEnums
+        );
+        return responseFactory.successPage(viewingListItems, "My viewing list retrieved successfully");
+    }
+
+    @PreAuthorize("hasRole('SALESAGENT')")
+    @GetMapping("/my-assigned-properties")
+    @Operation(
+            summary = "Agent Get their own assigned properties",
+            description = "Get paginated list of properties assigned to the current agent with optional property owner name filter",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<PageResponse<SimplePropertyCard>> getMyAssignedProperties(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Number of items per page")
+            @RequestParam(defaultValue = "10") int limit,
+            @Parameter(description = "Sort direction: asc or desc")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Field to sort by")
+            @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Property owner name to filter by")
+            @RequestParam(required = false) String propertyOwnerName) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<SimplePropertyCard> properties = propertyService.myAssignedProperties(
+                pageable,
+                propertyOwnerName
+        );
+        return responseFactory.successPage(properties, "My assigned properties retrieved successfully");
+    }
+
+    @PutMapping("/update-appointment-details/{appointmentId}")
+    @Operation(
+            summary = "Agent Update appointment details",
+            description = "Update appointment details such as agent notes, viewing outcome, customer interest level, status, and cancellation reason. Only non-null fields will be updated.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<Boolean>> updateAppointmentDetails(
+            @Parameter(description = "Appointment ID", required = true)
+            @PathVariable UUID appointmentId,
+            @Parameter(description = "Agent notes")
+            @RequestParam(required = false) String agentNotes,
+            @Parameter(description = "Viewing outcome")
+            @RequestParam(required = false) String viewingOutcome,
+            @Parameter(description = "Customer interest level (e.g., LOW, MEDIUM, HIGH, VERY_HIGH)")
+            @RequestParam(required = false) String customerInterestLevel,
+            @Parameter(description = "Appointment status")
+            @RequestParam(required = false) Constants.AppointmentStatusEnum status,
+            @Parameter(description = "Cancellation reason (used when status is CANCELLED)")
+            @RequestParam(required = false) String cancelledReason) {
+
+        boolean result = appointmentService.updateAppointmentDetails(
+                appointmentId,
+                agentNotes,
+                viewingOutcome,
+                customerInterestLevel,
+                status,
+                cancelledReason
+        );
+
+        String message = result
+                ? "Appointment details updated successfully"
+                : "No changes were made to the appointment";
 
         return responseFactory.successSingle(result, message);
     }

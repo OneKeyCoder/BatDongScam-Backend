@@ -4,6 +4,7 @@ import com.se100.bds.dtos.requests.property.CreatePropertyTypeRequest;
 import com.se100.bds.dtos.requests.property.UpdatePropertyTypeRequest;
 import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.PropertyTypeResponse;
+import com.se100.bds.dtos.responses.property.SimplePropertyCard;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.property.PropertyType;
 import com.se100.bds.services.dtos.results.PropertyCard;
@@ -42,4 +43,8 @@ public interface PropertyService {
 
     // Assignment
     boolean assignAgent(UUID agentId, UUID propertyId);
+    Page<SimplePropertyCard> myAssignedProperties(
+            Pageable pageable,
+            String propertyOwnerName
+    );
 }

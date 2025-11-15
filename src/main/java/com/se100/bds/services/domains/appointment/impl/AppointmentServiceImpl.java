@@ -1,9 +1,9 @@
 package com.se100.bds.services.domains.appointment.impl;
 
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
-import com.se100.bds.dtos.responses.appointment.ViewingDetails;
+import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
-import com.se100.bds.dtos.responses.appointment.ViewingListItemDto;
+import com.se100.bds.dtos.responses.appointment.ViewingListItem;
 import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
 import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
 import com.se100.bds.mappers.AppointmentMapper;
@@ -91,11 +91,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public ViewingDetails getViewingDetails(UUID id) {
+    public ViewingDetailsCustomer getViewingDetails(UUID id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id"));
 
-        ViewingDetails viewingDetails = appointmentMapper.mapTo(appointment, ViewingDetails.class);
+        ViewingDetailsCustomer viewingDetailsCustomer = appointmentMapper.mapTo(appointment, ViewingDetailsCustomer.class);
 
         List<String> imagesList = appointment.getProperty().getMediaList().stream()
                 .map(Media::getFilePath)
@@ -105,10 +105,10 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .map(IdentificationDocument::getFilePath)
                 .collect(Collectors.toList());
 
-        viewingDetails.setImagesList(imagesList);
-        viewingDetails.setImages(imagesList.size());
-        viewingDetails.setAttachedDocuments(documentList);
-        viewingDetails.setFullAddress(fullAddress);
+        viewingDetailsCustomer.setImagesList(imagesList);
+        viewingDetailsCustomer.setImages(imagesList.size());
+        viewingDetailsCustomer.setAttachedDocuments(documentList);
+        viewingDetailsCustomer.setFullAddress(fullAddress);
 
         String ownerTier = rankingService.getCurrentTier(
                 appointment.getProperty().getOwner().getId(),
@@ -118,7 +118,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 appointment.getProperty().getOwner(),
                 ownerTier
         );
-        viewingDetails.setPropertyOwner(ownerCard);
+        viewingDetailsCustomer.setPropertyOwner(ownerCard);
 
         if (appointment.getAgent() != null) {
             IndividualSalesAgentPerformanceMonth agentRanking = rankingService.getSaleAgentCurrentMonth(
@@ -135,14 +135,14 @@ public class AppointmentServiceImpl implements AppointmentService {
                     agentRankingCareer.getAvgRating().doubleValue(),
                     agentRankingCareer.getTotalRates()
             );
-            viewingDetails.setSalesAgent(agentCard);
+            viewingDetailsCustomer.setSalesAgent(agentCard);
         }
 
-        return viewingDetails;
+        return viewingDetailsCustomer;
     }
 
     @Override
-    public Page<ViewingListItemDto> getViewingListItems(
+    public Page<ViewingListItem> getViewingListItems(
             Pageable pageable,
             String propertyName, List<UUID> propertyTypeIds,
             List<Constants.TransactionTypeEnum> transactionTypeEnums,
@@ -228,10 +228,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         List<Appointment> pagedAppointments = finalAppointments.subList(start, end);
 
         // Map appointments to ViewingListItemDto with enriched data
-        List<ViewingListItemDto> viewingListItems = pagedAppointments.stream()
+        List<ViewingListItem> viewingListItems = pagedAppointments.stream()
                 .map(appointment -> {
                     // Map basic fields using the mapper
-                    ViewingListItemDto dto = appointmentMapper.mapTo(appointment, ViewingListItemDto.class);
+                    ViewingListItem dto = appointmentMapper.mapTo(appointment, ViewingListItem.class);
 
                     // Get customer tier
                     String customerTier = rankingService.getCurrentTier(
@@ -311,6 +311,71 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
+    public Page<ViewingListItem> getMyViewingListItems(
+            Pageable pageable,
+            String customerName,
+            Integer day, Integer month, Integer year,
+            List<Constants.AppointmentStatusEnum> statusEnums) {
+
+        List<User> customers = userService.findAllByNameAndRole(customerName, Constants.RoleEnum.CUSTOMER);
+        List<UUID> customerIds = new  ArrayList<>();
+        if (customers != null && !customers.isEmpty())
+            customerIds = customers.stream().map(User::getId).toList();
+
+
+        List<Appointment> appointments;
+        if (statusEnums != null && !statusEnums.isEmpty())
+            appointments = appointmentRepository
+                    .findAllByCustomer_IdInAndStatusInAndAgent_Id(customerIds, statusEnums, userService.getUserId());
+        else
+            appointments = appointmentRepository
+                    .findAllByCustomer_IdInAndAgent_Id(customerIds, userService.getUserId());
+
+        List<Appointment> finalAppointments = new ArrayList<>();
+
+        for (Appointment appointment : appointments) {
+            if (day != null && appointment.getRequestedDate().getDayOfMonth() != day)
+                continue;
+            if (month != null && appointment.getRequestedDate().getMonthValue() != month)
+                continue;
+            if (year != null && appointment.getRequestedDate().getYear() != year)
+                continue;
+            finalAppointments.add(appointment);
+        }
+
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), finalAppointments.size());
+        List<Appointment> pagedAppointments = finalAppointments.subList(start, end);
+
+        // Map appointments to ViewingListItem with enriched data
+        List<ViewingListItem> viewingListItems = pagedAppointments.stream()
+                .map(appointment -> {
+                    // Map basic fields using the mapper
+                    ViewingListItem dto = appointmentMapper.mapTo(appointment, ViewingListItem.class);
+
+                    // Get customer tier
+                    String customerTier = rankingService.getCurrentTier(
+                            appointment.getCustomer().getId(),
+                            Constants.RoleEnum.CUSTOMER
+                    );
+
+                    // Get sales agent tier (current user is the agent)
+                    String agentTier = rankingService.getSaleAgentCurrentMonth(
+                            appointment.getAgent().getId()
+                    ).getPerformanceTier().getValue();
+
+                    // Enrich with customer, agent, and thumbnail data
+                    appointmentMapper.enrichViewingListItem(dto, appointment, customerTier, agentTier);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(viewingListItems, pageable, finalAppointments.size());
+    }
+
+    @Override
     public int countByAgentId(UUID agentId) {
         Long count = appointmentRepository.countByAgent_Id(agentId);
         return count != null ? count.intValue() : 0;
@@ -354,5 +419,104 @@ public class AppointmentServiceImpl implements AppointmentService {
         log.info("Assigned agent {} to appointment: {}", agentId, appointmentId);
 
         return true;
+    }
+
+    @Override
+    public boolean updateAppointmentDetails(
+            UUID appointmentId,
+            String agentNotes,
+            String viewingOutcome,
+            String customerInterestLevel,
+            Constants.AppointmentStatusEnum status,
+            String cancelledReason) {
+
+        // Find the appointment
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id: " + appointmentId));
+
+        boolean updated = false;
+
+        // Update agent notes if not null
+        if (agentNotes != null) {
+            appointment.setAgentNotes(agentNotes);
+            updated = true;
+        }
+
+        // Update viewing outcome if not null
+        if (viewingOutcome != null) {
+            appointment.setViewingOutcome(viewingOutcome);
+            updated = true;
+        }
+
+        // Update customer interest level if not null
+        if (customerInterestLevel != null) {
+            appointment.setCustomerInterestLevel(customerInterestLevel);
+            updated = true;
+        }
+
+        // Update status if not null
+        if (status != null) {
+            appointment.setStatus(status);
+            updated = true;
+
+            // If status is CANCELLED, update cancelled fields
+            if (status == Constants.AppointmentStatusEnum.CANCELLED) {
+                appointment.setCancelledAt(LocalDateTime.now());
+                User currentUser = userService.getUser();
+                if (currentUser != null) {
+                    appointment.setCancelledBy(currentUser.getRole());
+                    // TODO: If cancelled by Agent => Call the ranking service to penalize
+                }
+
+                // Update cancelled reason if provided
+                if (cancelledReason != null) {
+                    appointment.setCancelledReason(cancelledReason);
+                }
+            }
+        } else if (cancelledReason != null) {
+            // Update cancelled reason even if status is not provided (in case it's already cancelled)
+            appointment.setCancelledReason(cancelledReason);
+            updated = true;
+        }
+
+        // Save if any field was updated
+        if (updated) {
+            appointmentRepository.save(appointment);
+            log.info("Updated appointment details for appointment: {}", appointmentId);
+        }
+
+        return updated;
+    }
+
+    @Override
+    public boolean rateAppointment(UUID appointmentId, Short rating, String comment) {
+        // Find the appointment
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id: " + appointmentId));
+
+        boolean updated = false;
+
+        // Validate rating (should be between 1 and 5)
+        if (rating != null) {
+            if (rating < 1 || rating > 5) {
+                throw new IllegalArgumentException("Rating must be between 1 and 5");
+            }
+            appointment.setRating(rating);
+            updated = true;
+        }
+
+        // Update comment if not null
+        if (comment != null) {
+            appointment.setComment(comment);
+            updated = true;
+        }
+
+        // Save if any field was updated
+        if (updated) {
+            appointmentRepository.save(appointment);
+            log.info("Rated appointment {} with rating: {}", appointmentId, rating);
+        }
+
+        return updated;
     }
 }

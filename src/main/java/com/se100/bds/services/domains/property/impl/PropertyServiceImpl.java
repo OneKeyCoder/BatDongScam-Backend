@@ -4,6 +4,7 @@ import com.se100.bds.dtos.requests.property.CreatePropertyTypeRequest;
 import com.se100.bds.dtos.requests.property.UpdatePropertyTypeRequest;
 import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.PropertyTypeResponse;
+import com.se100.bds.dtos.responses.property.SimplePropertyCard;
 import com.se100.bds.exceptions.NotFoundException;
 import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.property.PropertyType;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -381,5 +383,46 @@ public class PropertyServiceImpl implements PropertyService {
         log.info("Assigned agent {} to property: {}", agentId, propertyId);
 
         return true;
+    }
+
+    @Override
+    public Page<SimplePropertyCard> myAssignedProperties(
+            Pageable pageable,
+            String propertyOwnerName) {
+        Page<Property> properties;
+        if (propertyOwnerName != null && !propertyOwnerName.isEmpty()) {
+            List<User> propOwners = userService.findAllByNameAndRole(
+                    propertyOwnerName, Constants.RoleEnum.PROPERTY_OWNER
+            );
+            List<UUID> propOwnerIds = new ArrayList<>();
+            if (propOwners != null && !propOwners.isEmpty())
+                propOwnerIds = propOwners.stream().map(User::getId).toList();
+            properties = propertyRepository.findAllByOwner_IdInAndAssignedAgent_Id(
+                    propOwnerIds, userService.getUserId(), pageable
+            );
+        } else
+            properties = propertyRepository.findAllByAssignedAgent_Id(
+                    userService.getUserId(), pageable
+            );
+
+        Page<SimplePropertyCard> propertyCards = propertyMapper.mapToPage(properties, SimplePropertyCard.class);
+
+        // Enrich with owner and agent tiers
+        propertyCards.forEach(card -> {
+            if (card.getOwnerId() != null) {
+                card.setOwnerTier(rankingService.getCurrentTier(
+                        card.getOwnerId(),
+                        Constants.RoleEnum.PROPERTY_OWNER
+                ));
+            }
+            if (card.getAgentId() != null) {
+                card.setAgentTier(rankingService.getCurrentTier(
+                        card.getAgentId(),
+                        Constants.RoleEnum.SALESAGENT
+                ));
+            }
+        });
+
+        return propertyCards;
     }
 }

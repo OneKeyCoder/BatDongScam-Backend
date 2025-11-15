@@ -1,6 +1,7 @@
 package com.se100.bds.repositories.domains.appointment;
 
 import com.se100.bds.models.entities.appointment.Appointment;
+import com.se100.bds.models.entities.user.Customer;
 import com.se100.bds.utils.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,4 +69,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID>,
     );
 
     Long countByAgent_Id(UUID agentId);
+
+    @EntityGraph(attributePaths = {"property", "property.ward", "property.ward.district", "property.ward.district.city", "property.mediaList", "property.propertyType", "agent", "agent.user", "customer", "customer.user", "property.owner", "property.owner.user"})
+    List<Appointment> findAllByCustomer_IdInAndStatusInAndAgent_Id(Collection<UUID> customerIds, Collection<Constants.AppointmentStatusEnum> statuses, UUID agentId);
+
+    @EntityGraph(attributePaths = {"property", "property.ward", "property.ward.district", "property.ward.district.city", "property.mediaList", "property.propertyType", "agent", "agent.user", "customer", "customer.user", "property.owner", "property.owner.user"})
+    List<Appointment> findAllByCustomer_IdInAndAgent_Id(Collection<UUID> customerIds, UUID agentId);
 }

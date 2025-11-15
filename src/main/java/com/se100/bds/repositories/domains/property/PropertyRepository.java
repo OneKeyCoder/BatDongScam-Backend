@@ -8,6 +8,7 @@ import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
 import com.se100.bds.utils.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -238,7 +239,11 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
 
     List<Property> findAllByOwner_Id(UUID ownerId);
 
+    @EntityGraph(attributePaths = {"owner", "owner.user", "assignedAgent", "assignedAgent.user", "mediaList", "ward", "ward.district", "ward.district.city", "propertyType"})
     List<Property> findAllByAssignedAgent_Id(UUID assignedAgentId);
+
+    @EntityGraph(attributePaths = {"owner", "owner.user", "assignedAgent", "assignedAgent.user", "mediaList", "ward", "ward.district", "ward.district.city", "propertyType"})
+    Page<Property> findAllByAssignedAgent_Id(UUID assignedAgentId, Pageable pageable);
 
     @Query("""
     SELECT p
@@ -275,4 +280,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
     int countActivePropertiesByCityId(@Param("cityId") UUID cityId);
 
     Long countByAssignedAgent_Id(UUID assignedAgentId);
+
+    @EntityGraph(attributePaths = {"owner", "owner.user", "assignedAgent", "assignedAgent.user", "mediaList", "ward", "ward.district", "ward.district.city", "propertyType"})
+    Page<Property> findAllByOwner_IdInAndAssignedAgent_Id(Collection<UUID> ownerIds, UUID assignedAgentId, Pageable pageable);
 }

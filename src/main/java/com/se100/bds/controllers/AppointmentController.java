@@ -4,9 +4,9 @@ import com.se100.bds.controllers.base.AbstractBaseController;
 import com.se100.bds.dtos.responses.PageResponse;
 import com.se100.bds.dtos.responses.SingleResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
-import com.se100.bds.dtos.responses.appointment.ViewingDetails;
+import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
-import com.se100.bds.dtos.responses.appointment.ViewingListItemDto;
+import com.se100.bds.dtos.responses.appointment.ViewingListItem;
 import com.se100.bds.services.domains.appointment.AppointmentService;
 import com.se100.bds.utils.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -62,11 +63,11 @@ public class AppointmentController extends AbstractBaseController {
             summary = "Customer Get viewing details by appointment ID",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<SingleResponse<ViewingDetails>> getViewingDetails(
+    public ResponseEntity<SingleResponse<ViewingDetailsCustomer>> getViewingDetails(
             @Parameter(description = "Appointment ID")
             @PathVariable UUID id) {
-        ViewingDetails viewingDetails = appointmentService.getViewingDetails(id);
-        return responseFactory.successSingle(viewingDetails, "Viewing details retrieved successfully");
+        ViewingDetailsCustomer viewingDetailsCustomer = appointmentService.getViewingDetails(id);
+        return responseFactory.successSingle(viewingDetailsCustomer, "Viewing details retrieved successfully");
     }
 
     @GetMapping("/admin/viewing-list")
@@ -75,7 +76,7 @@ public class AppointmentController extends AbstractBaseController {
             description = "Get paginated list of appointments with comprehensive filtering options",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<PageResponse<ViewingListItemDto>> getViewingListItems(
+    public ResponseEntity<PageResponse<ViewingListItem>> getViewingListItems(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Number of items per page")
@@ -115,7 +116,7 @@ public class AppointmentController extends AbstractBaseController {
             @Parameter(description = "Appointment status enums to filter by")
             @RequestParam(required = false) List<Constants.AppointmentStatusEnum> statusEnums) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ViewingListItemDto> viewingListItems = appointmentService.getViewingListItems(
+        Page<ViewingListItem> viewingListItems = appointmentService.getViewingListItems(
                 pageable,
                 propertyName, propertyTypeIds,
                 transactionTypeEnums,
@@ -129,9 +130,10 @@ public class AppointmentController extends AbstractBaseController {
         return responseFactory.successPage(viewingListItems, "Viewing list retrieved successfully");
     }
 
-    @GetMapping("/admin/viewing-details/{id}")
+    @PreAuthorize("hasRole({'ADMIN', 'SALESAGENT'})")
+    @GetMapping("/viewing-details/{id}")
     @Operation(
-            summary = "Admin Get viewing details by appointment ID",
+            summary = "Admin or Agent Get viewing details by appointment ID",
             description = "Get detailed appointment information including property, customer, owner, and agent details",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
@@ -140,5 +142,29 @@ public class AppointmentController extends AbstractBaseController {
             @PathVariable UUID id) {
         ViewingDetailsAdmin viewingDetails = appointmentService.getViewingDetailsAdmin(id);
         return responseFactory.successSingle(viewingDetails, "Viewing details retrieved successfully");
+    }
+
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @PutMapping("/rate/{appointmentId}")
+    @Operation(
+            summary = "Customer Rate an appointment",
+            description = "Rate an appointment with a rating (1-5) and optional comment",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<Boolean>> rateAppointment(
+            @Parameter(description = "Appointment ID", required = true)
+            @PathVariable UUID appointmentId,
+            @Parameter(description = "Rating (1-5)", required = true)
+            @RequestParam Short rating,
+            @Parameter(description = "Comment about the appointment")
+            @RequestParam(required = false) String comment) {
+
+        boolean result = appointmentService.rateAppointment(appointmentId, rating, comment);
+
+        String message = result
+                ? "Appointment rated successfully"
+                : "No changes were made to the appointment";
+
+        return responseFactory.successSingle(result, message);
     }
 }

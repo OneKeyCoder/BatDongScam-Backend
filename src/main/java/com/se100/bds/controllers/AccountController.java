@@ -281,42 +281,6 @@ public class AccountController extends AbstractBaseController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping
-    @Operation(
-            summary = "Get all users with pagination",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<PageResponse<MeResponse>> getAllUsers(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "15") int limit,
-            @RequestParam(defaultValue = "desc") String sortType,
-            @RequestParam(defaultValue = "createdAt") String sortBy
-    ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<User> userPage = userService.findAll(pageable);
-        Page<MeResponse> response = userMapper.mapToPage(userPage, MeResponse.class);
-        return responseFactory.successPage(response, "Users retrieved successfully");
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{propOwnerId}/{approve}/approve")
     @Operation(
             summary = "Approve a property owner account",

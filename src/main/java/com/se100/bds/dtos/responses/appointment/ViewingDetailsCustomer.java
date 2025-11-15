@@ -17,7 +17,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class ViewingDetails extends AbstractBaseDataResponse {
+public class ViewingDetailsCustomer extends AbstractBaseDataResponse {
     private String title;
     private Integer images;
     private List<String> imagesList;

@@ -44,6 +44,98 @@ public class PropertyMapper extends BaseMapper {
                     }).map(src -> src, (dest, value) -> dest.setLocation((String) value));
                 });
 
+        // Mapping for Property entity to SimplePropertyCard
+        modelMapper.typeMap(Property.class, SimplePropertyCard.class)
+                .addMappings(mapper -> {
+                    // Map basic fields
+                    mapper.map(Property::getTitle, SimplePropertyCard::setTitle);
+                    mapper.map(Property::getTransactionType, SimplePropertyCard::setTransactionType);
+                    mapper.map(Property::getPriceAmount, SimplePropertyCard::setPrice);
+                    mapper.map(Property::getArea, SimplePropertyCard::setTotalArea);
+
+                    // Map status
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getStatus() != null ? property.getStatus().name() : null;
+                    }).map(src -> src, SimplePropertyCard::setStatus);
+
+                    // Map thumbnail from media list
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        if (property.getMediaList() != null && !property.getMediaList().isEmpty()) {
+                            return property.getMediaList().get(0).getFilePath();
+                        }
+                        return null;
+                    }).map(src -> src, SimplePropertyCard::setThumbnailUrl);
+
+                    // Map number of images
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getMediaList() != null ? property.getMediaList().size() : 0;
+                    }).map(src -> src, SimplePropertyCard::setNumberOfImages);
+
+                    // Map location (district, city)
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        if (property.getWard() != null && property.getWard().getDistrict() != null) {
+                            String district = property.getWard().getDistrict().getDistrictName();
+                            String city = property.getWard().getDistrict().getCity() != null
+                                    ? property.getWard().getDistrict().getCity().getCityName() : null;
+
+                            if (district != null && city != null) {
+                                return district + ", " + city;
+                            } else if (city != null) {
+                                return city;
+                            }
+                            return district;
+                        }
+                        return null;
+                    }).map(src -> src, SimplePropertyCard::setLocation);
+
+                    // Map owner fields
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getOwner() != null ? property.getOwner().getId() : null;
+                    }).map(src -> src, SimplePropertyCard::setOwnerId);
+
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getOwner() != null && property.getOwner().getUser() != null
+                                ? property.getOwner().getUser().getFirstName() : null;
+                    }).map(src -> src, SimplePropertyCard::setOwnerFirstName);
+
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getOwner() != null && property.getOwner().getUser() != null
+                                ? property.getOwner().getUser().getLastName() : null;
+                    }).map(src -> src, SimplePropertyCard::setOwnerLastName);
+
+                    // Map agent fields
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getAssignedAgent() != null ? property.getAssignedAgent().getId() : null;
+                    }).map(src -> src, SimplePropertyCard::setAgentId);
+
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getAssignedAgent() != null && property.getAssignedAgent().getUser() != null
+                                ? property.getAssignedAgent().getUser().getFirstName() : null;
+                    }).map(src -> src, SimplePropertyCard::setAgentFirstName);
+
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        return property.getAssignedAgent() != null && property.getAssignedAgent().getUser() != null
+                                ? property.getAssignedAgent().getUser().getLastName() : null;
+                    }).map(src -> src, SimplePropertyCard::setAgentLastName);
+
+                    // isFavorite will be set to false by default (requires additional logic)
+                    mapper.skip(SimplePropertyCard::setFavorite);
+
+                    // Tiers will be set separately in the service layer
+                    mapper.skip(SimplePropertyCard::setOwnerTier);
+                    mapper.skip(SimplePropertyCard::setAgentTier);
+                });
+
         // Custom mapping for Property to PropertyDetails
         modelMapper.typeMap(Property.class, PropertyDetails.class)
                 .addMappings(mapper -> {

@@ -1,8 +1,8 @@
 package com.se100.bds.mappers;
 
-import com.se100.bds.dtos.responses.appointment.ViewingDetails;
+import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
-import com.se100.bds.dtos.responses.appointment.ViewingListItemDto;
+import com.se100.bds.dtos.responses.appointment.ViewingListItem;
 import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
 import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
 import com.se100.bds.models.entities.appointment.Appointment;
@@ -23,44 +23,44 @@ public class AppointmentMapper extends BaseMapper {
     @Override
     protected void configureCustomMappings() {
         // Configure mapping from Appointment to ViewingDetails
-        modelMapper.typeMap(Appointment.class, ViewingDetails.class)
+        modelMapper.typeMap(Appointment.class, ViewingDetailsCustomer.class)
                 .addMappings(mapper -> {
                     // Map property fields to ViewingDetails
-                    mapper.map(src -> src.getProperty().getTitle(), ViewingDetails::setTitle);
-                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingDetails::setPriceAmount);
-                    mapper.map(src -> src.getProperty().getArea(), ViewingDetails::setArea);
-                    mapper.map(src -> src.getProperty().getDescription(), ViewingDetails::setDescription);
-                    mapper.map(src -> src.getProperty().getRooms(), ViewingDetails::setRooms);
-                    mapper.map(src -> src.getProperty().getBathrooms(), ViewingDetails::setBathRooms);
-                    mapper.map(src -> src.getProperty().getBedrooms(), ViewingDetails::setBedRooms);
-                    mapper.map(src -> src.getProperty().getFloors(), ViewingDetails::setFloors);
-                    mapper.map(src -> src.getProperty().getHouseOrientation(), ViewingDetails::setHouseOrientation);
-                    mapper.map(src -> src.getProperty().getBalconyOrientation(), ViewingDetails::setBalconyOrientation);
-                    mapper.map(Appointment::getAgentNotes, ViewingDetails::setNotes);
+                    mapper.map(src -> src.getProperty().getTitle(), ViewingDetailsCustomer::setTitle);
+                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingDetailsCustomer::setPriceAmount);
+                    mapper.map(src -> src.getProperty().getArea(), ViewingDetailsCustomer::setArea);
+                    mapper.map(src -> src.getProperty().getDescription(), ViewingDetailsCustomer::setDescription);
+                    mapper.map(src -> src.getProperty().getRooms(), ViewingDetailsCustomer::setRooms);
+                    mapper.map(src -> src.getProperty().getBathrooms(), ViewingDetailsCustomer::setBathRooms);
+                    mapper.map(src -> src.getProperty().getBedrooms(), ViewingDetailsCustomer::setBedRooms);
+                    mapper.map(src -> src.getProperty().getFloors(), ViewingDetailsCustomer::setFloors);
+                    mapper.map(src -> src.getProperty().getHouseOrientation(), ViewingDetailsCustomer::setHouseOrientation);
+                    mapper.map(src -> src.getProperty().getBalconyOrientation(), ViewingDetailsCustomer::setBalconyOrientation);
+                    mapper.map(Appointment::getAgentNotes, ViewingDetailsCustomer::setNotes);
                 });
 
         // Configure mapping from Appointment to ViewingListItemDto
-        modelMapper.typeMap(Appointment.class, ViewingListItemDto.class)
+        modelMapper.typeMap(Appointment.class, ViewingListItem.class)
                 .addMappings(mapper -> {
                     // Map basic appointment fields
-                    mapper.map(Appointment::getRequestedDate, ViewingListItemDto::setRequestedDate);
-                    mapper.map(Appointment::getStatus, ViewingListItemDto::setStatus);
+                    mapper.map(Appointment::getRequestedDate, ViewingListItem::setRequestedDate);
+                    mapper.map(Appointment::getStatus, ViewingListItem::setStatus);
 
                     // Map property fields
-                    mapper.map(src -> src.getProperty().getTitle(), ViewingListItemDto::setPropertyName);
-                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingListItemDto::setPrice);
-                    mapper.map(src -> src.getProperty().getArea(), ViewingListItemDto::setArea);
+                    mapper.map(src -> src.getProperty().getTitle(), ViewingListItem::setPropertyName);
+                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingListItem::setPrice);
+                    mapper.map(src -> src.getProperty().getArea(), ViewingListItem::setArea);
 
                     // Map location fields
-                    mapper.map(src -> src.getProperty().getWard().getWardName(), ViewingListItemDto::setWardName);
-                    mapper.map(src -> src.getProperty().getWard().getDistrict().getDistrictName(), ViewingListItemDto::setDistrictName);
-                    mapper.map(src -> src.getProperty().getWard().getDistrict().getCity().getCityName(), ViewingListItemDto::setCityName);
+                    mapper.map(src -> src.getProperty().getWard().getWardName(), ViewingListItem::setWardName);
+                    mapper.map(src -> src.getProperty().getWard().getDistrict().getDistrictName(), ViewingListItem::setDistrictName);
+                    mapper.map(src -> src.getProperty().getWard().getDistrict().getCity().getCityName(), ViewingListItem::setCityName);
 
                     // Skip customer and agent - will be set manually in service to avoid lazy loading issues
-                    mapper.skip(ViewingListItemDto::setCustomerName);
-                    mapper.skip(ViewingListItemDto::setCustomerTier);
-                    mapper.skip(ViewingListItemDto::setSalesAgentName);
-                    mapper.skip(ViewingListItemDto::setSalesAgentTier);
+                    mapper.skip(ViewingListItem::setCustomerName);
+                    mapper.skip(ViewingListItem::setCustomerTier);
+                    mapper.skip(ViewingListItem::setSalesAgentName);
+                    mapper.skip(ViewingListItem::setSalesAgentTier);
                 });
     }
 
@@ -99,7 +99,7 @@ public class AppointmentMapper extends BaseMapper {
      * Enrich ViewingListItemDto with customer and agent data
      * This must be called after the base mapping to populate lazy-loaded relationships
      */
-    public void enrichViewingListItem(ViewingListItemDto dto, Appointment appointment, String customerTier, String agentTier) {
+    public void enrichViewingListItem(ViewingListItem dto, Appointment appointment, String customerTier, String agentTier) {
         if (appointment.getCustomer() != null && appointment.getCustomer().getUser() != null) {
             dto.setCustomerName(appointment.getCustomer().getUser().getFullName());
         }
