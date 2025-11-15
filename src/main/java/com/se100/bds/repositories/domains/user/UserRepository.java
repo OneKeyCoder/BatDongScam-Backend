@@ -38,6 +38,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     @Query("SELECT u FROM User u WHERE LOWER(CAST(CONCAT(u.lastName, ' ', u.firstName) AS string)) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%'))")
     List<User> findAllByFullNameIsLikeIgnoreCase(String name);
 
+    @Query("SELECT u FROM User u WHERE LOWER(CAST(CONCAT(u.lastName, ' ', u.firstName) AS string)) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%')) AND u.role = :role")
+    List<User> findAllByFullNameIsLikeIgnoreCaseAndRole(@Param("name") String name, @Param("role") Constants.RoleEnum role);
+
     @EntityGraph(attributePaths = {"ward", "ward.district", "ward.district.city"})
     @Query("""
         SELECT u

@@ -111,4 +111,7 @@ public interface UserService {
             LocalDateTime joinedDateFrom, LocalDateTime joinedDateTo,
             List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
     );
+
+    /// Internal
+    List<User> findAllByNameAndRole(String name, Constants.RoleEnum roleEnum);
 }

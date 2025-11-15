@@ -1,6 +1,7 @@
 package com.se100.bds.mappers;
 
 import com.se100.bds.dtos.responses.appointment.ViewingDetails;
+import com.se100.bds.dtos.responses.appointment.ViewingListItemDto;
 import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
 import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
 import com.se100.bds.models.entities.appointment.Appointment;
@@ -35,6 +36,30 @@ public class AppointmentMapper extends BaseMapper {
                     mapper.map(src -> src.getProperty().getBalconyOrientation(), ViewingDetails::setBalconyOrientation);
                     mapper.map(Appointment::getAgentNotes, ViewingDetails::setNotes);
                 });
+
+        // Configure mapping from Appointment to ViewingListItemDto
+        modelMapper.typeMap(Appointment.class, ViewingListItemDto.class)
+                .addMappings(mapper -> {
+                    // Map basic appointment fields
+                    mapper.map(Appointment::getRequestedDate, ViewingListItemDto::setRequestedDate);
+                    mapper.map(Appointment::getStatus, ViewingListItemDto::setStatus);
+
+                    // Map property fields
+                    mapper.map(src -> src.getProperty().getTitle(), ViewingListItemDto::setPropertyName);
+                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingListItemDto::setPrice);
+                    mapper.map(src -> src.getProperty().getArea(), ViewingListItemDto::setArea);
+
+                    // Map location fields
+                    mapper.map(src -> src.getProperty().getWard().getWardName(), ViewingListItemDto::setWardName);
+                    mapper.map(src -> src.getProperty().getWard().getDistrict().getDistrictName(), ViewingListItemDto::setDistrictName);
+                    mapper.map(src -> src.getProperty().getWard().getDistrict().getCity().getCityName(), ViewingListItemDto::setCityName);
+
+                    // Skip customer and agent - will be set manually in service to avoid lazy loading issues
+                    mapper.skip(ViewingListItemDto::setCustomerName);
+                    mapper.skip(ViewingListItemDto::setCustomerTier);
+                    mapper.skip(ViewingListItemDto::setSalesAgentName);
+                    mapper.skip(ViewingListItemDto::setSalesAgentTier);
+                });
     }
 
     /**
@@ -66,5 +91,28 @@ public class AppointmentMapper extends BaseMapper {
                 .rating(rating)
                 .totalRates(totalRates)
                 .build();
+    }
+
+    /**
+     * Enrich ViewingListItemDto with customer and agent data
+     * This must be called after the base mapping to populate lazy-loaded relationships
+     */
+    public void enrichViewingListItem(ViewingListItemDto dto, Appointment appointment, String customerTier, String agentTier) {
+        if (appointment.getCustomer() != null && appointment.getCustomer().getUser() != null) {
+            dto.setCustomerName(appointment.getCustomer().getUser().getFullName());
+        }
+        dto.setCustomerTier(customerTier);
+
+        if (appointment.getAgent() != null && appointment.getAgent().getUser() != null) {
+            dto.setSalesAgentName(appointment.getAgent().getUser().getFullName());
+        }
+        dto.setSalesAgentTier(agentTier);
+
+        // Set thumbnail
+        if (appointment.getProperty() != null &&
+            appointment.getProperty().getMediaList() != null &&
+            !appointment.getProperty().getMediaList().isEmpty()) {
+            dto.setThumbnailUrl(appointment.getProperty().getMediaList().get(0).getFilePath());
+        }
     }
 }

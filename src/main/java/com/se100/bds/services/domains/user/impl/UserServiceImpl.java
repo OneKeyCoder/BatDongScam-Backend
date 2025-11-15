@@ -1358,4 +1358,12 @@ public class UserServiceImpl implements UserService {
 
         return new PageImpl<>(ownerListItemList);
     }
+
+    @Override
+    public List<User> findAllByNameAndRole(String name, Constants.RoleEnum roleEnum) {
+        if (name != null && !name.isEmpty())
+            return userRepository.findAllByFullNameIsLikeIgnoreCaseAndRole(name, roleEnum);
+        else
+            return userRepository.findAllByRole(roleEnum);
+    }
 }
