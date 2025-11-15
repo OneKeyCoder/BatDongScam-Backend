@@ -37,7 +37,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID>,
         JOIN w.district d
         JOIN d.city c
         JOIN p.propertyType pt
-        JOIN a.agent ag
+        LEFT JOIN a.agent ag
         JOIN a.customer cu
         WHERE
             (COALESCE(:propertyName, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :propertyName, '%')))
@@ -50,6 +50,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID>,
             AND (COALESCE(:cityIds, NULL) IS NULL OR c.id IN :cityIds)
             AND (COALESCE(:districtIds, NULL) IS NULL OR d.id IN :districtIds)
             AND (COALESCE(:wardIds, NULL) IS NULL OR w.id IN :wardIds)
+            AND (COALESCE(:statusEnums, NULL) IS NULL OR a.status IN :statusEnums)
         """)
     List<Appointment> findAllWithFilter(
             @Param("propertyName") String propertyName,
@@ -61,6 +62,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID>,
             @Param("maxRating") Short maxRating,
             @Param("cityIds") List<UUID> cityIds,
             @Param("districtIds") List<UUID> districtIds,
-            @Param("wardIds") List<UUID> wardIds
+            @Param("wardIds") List<UUID> wardIds,
+            @Param("statusEnums") List<Constants.AppointmentStatusEnum> statusEnums
     );
+
+    Long countByAgent_Id(UUID agentId);
 }

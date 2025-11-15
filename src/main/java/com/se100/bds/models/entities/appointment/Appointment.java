@@ -30,7 +30,7 @@ public class Appointment extends AbstractBaseEntity {
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "agent_id", nullable = false)
+    @JoinColumn(name = "agent_id")
     private SaleAgent agent;
 
     @Column(name = "requested_date", nullable = false)

@@ -30,7 +30,14 @@ public interface AppointmentService {
             String customerName, List<Constants.CustomerTierEnum> customerTiers,
             LocalDateTime requestDateFrom, LocalDateTime requestDateTo,
             Short minRating, Short maxRating,
-            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
+            List<Constants.AppointmentStatusEnum> statusEnums
     );
     ViewingDetailsAdmin getViewingDetailsAdmin(UUID id);
+
+    // Helper methods
+    int countByAgentId(UUID agentId);
+
+    // Assignment
+    boolean assignAgent(UUID agentId, UUID appointmentId);
 }

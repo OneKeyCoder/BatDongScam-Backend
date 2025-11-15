@@ -120,21 +120,23 @@ public class AppointmentServiceImpl implements AppointmentService {
         );
         viewingDetails.setPropertyOwner(ownerCard);
 
-        IndividualSalesAgentPerformanceMonth agentRanking = rankingService.getSaleAgentCurrentMonth(
-                appointment.getAgent().getId()
-        );
+        if (appointment.getAgent() != null) {
+            IndividualSalesAgentPerformanceMonth agentRanking = rankingService.getSaleAgentCurrentMonth(
+                    appointment.getAgent().getId()
+            );
 
-        IndividualSalesAgentPerformanceCareer agentRankingCareer = rankingService.getSaleAgentCareer(
-                appointment.getAgent().getId()
-        );
+            IndividualSalesAgentPerformanceCareer agentRankingCareer = rankingService.getSaleAgentCareer(
+                    appointment.getAgent().getId()
+            );
 
-        SalesAgentSimpleCard agentCard = appointmentMapper.buildAgentCard(
-                appointment.getAgent(),
-                agentRanking.getPerformanceTier().getValue(),
-                agentRankingCareer.getAvgRating().doubleValue(),
-                agentRankingCareer.getTotalRates()
-        );
-        viewingDetails.setSalesAgent(agentCard);
+            SalesAgentSimpleCard agentCard = appointmentMapper.buildAgentCard(
+                    appointment.getAgent(),
+                    agentRanking.getPerformanceTier().getValue(),
+                    agentRankingCareer.getAvgRating().doubleValue(),
+                    agentRankingCareer.getTotalRates()
+            );
+            viewingDetails.setSalesAgent(agentCard);
+        }
 
         return viewingDetails;
     }
@@ -148,42 +150,58 @@ public class AppointmentServiceImpl implements AppointmentService {
             String customerName, List<Constants.CustomerTierEnum> customerTiers,
             LocalDateTime requestDateFrom, LocalDateTime requestDateTo,
             Short minRating, Short maxRating,
-            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds) {
+            List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds,
+            List<Constants.AppointmentStatusEnum> statusEnums) {
 
-        List<User> agents = userService.findAllByNameAndRole(agentName, Constants.RoleEnum.SALESAGENT);
-        List<UUID> agentWithMatchedTiers = new ArrayList<>();
-        if (agentTiers != null && !agentTiers.isEmpty()) {
-            for (User agent : agents) {
-                Constants.PerformanceTierEnum agentTier = rankingService.getSaleAgentCurrentMonth(agent.getId()).getPerformanceTier();
-                for (Constants.PerformanceTierEnum desiredTier: agentTiers) {
-                    if (desiredTier.equals(agentTier)) {
-                        agentWithMatchedTiers.add(agent.getId());
-                        break;
+        List<UUID> agentWithMatchedTiers = null;
+        if (agentName != null || (agentTiers != null && !agentTiers.isEmpty())) {
+            List<User> agents = userService.findAllByNameAndRole(agentName, Constants.RoleEnum.SALESAGENT);
+            agentWithMatchedTiers = new ArrayList<>();
+
+            if (agentTiers != null && !agentTiers.isEmpty()) {
+                // Filter by both name and tier
+                for (User agent : agents) {
+                    Constants.PerformanceTierEnum agentTier = rankingService.getSaleAgentCurrentMonth(agent.getId()).getPerformanceTier();
+                    for (Constants.PerformanceTierEnum desiredTier: agentTiers) {
+                        if (desiredTier.equals(agentTier)) {
+                            agentWithMatchedTiers.add(agent.getId());
+                            break;
+                        }
                     }
                 }
+            } else {
+                // Filter by name only
+                agentWithMatchedTiers = agents.stream()
+                        .map(AbstractBaseEntity::getId)
+                        .collect(Collectors.toList());
             }
-        } else {
-            agentWithMatchedTiers = agents.stream()
-                    .map(AbstractBaseEntity::getId)
-                    .collect(Collectors.toList());
         }
 
-        List<User> customers = userService.findAllByNameAndRole(customerName, Constants.RoleEnum.CUSTOMER);
-        List<UUID> customerWithMatchedTiers = new ArrayList<>();
-        if (customerTiers != null && !customerTiers.isEmpty()) {
-            for (User customer : customers) {
-                Constants.CustomerTierEnum customerTier = rankingService.getCustomerCurrentMonth(customer.getId()).getCustomerTier();
-                for (Constants.CustomerTierEnum desiredTier: customerTiers) {
-                    if (desiredTier.equals(customerTier)) {
-                        customerWithMatchedTiers.add(customer.getId());
-                        break;
+        // Handle customer filtering
+        // If no customer name or tier filters provided, pass null to include all appointments
+        List<UUID> customerWithMatchedTiers = null;
+        if (customerName != null || (customerTiers != null && !customerTiers.isEmpty())) {
+            // Customer filters are specified
+            List<User> customers = userService.findAllByNameAndRole(customerName, Constants.RoleEnum.CUSTOMER);
+            customerWithMatchedTiers = new ArrayList<>();
+
+            if (customerTiers != null && !customerTiers.isEmpty()) {
+                // Filter by both name and tier
+                for (User customer : customers) {
+                    Constants.CustomerTierEnum customerTier = rankingService.getCustomerCurrentMonth(customer.getId()).getCustomerTier();
+                    for (Constants.CustomerTierEnum desiredTier: customerTiers) {
+                        if (desiredTier.equals(customerTier)) {
+                            customerWithMatchedTiers.add(customer.getId());
+                            break;
+                        }
                     }
                 }
+            } else {
+                // Filter by name only
+                customerWithMatchedTiers = customers.stream()
+                        .map(AbstractBaseEntity::getId)
+                        .collect(Collectors.toList());
             }
-        } else {
-            customerWithMatchedTiers = customers.stream()
-                    .map(AbstractBaseEntity::getId)
-                    .collect(Collectors.toList());
         }
 
         List<Appointment> appointments = appointmentRepository.findAllWithFilter(
@@ -192,7 +210,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 agentWithMatchedTiers,
                 customerWithMatchedTiers,
                 minRating, maxRating,
-                cityIds, districtIds, wardIds
+                cityIds, districtIds, wardIds,
+                statusEnums
         );
 
         List<Appointment> finalAppointments = new ArrayList<>();
@@ -220,10 +239,13 @@ public class AppointmentServiceImpl implements AppointmentService {
                             Constants.RoleEnum.CUSTOMER
                     );
 
-                    // Get sales agent tier
-                    String agentTier = rankingService.getSaleAgentCurrentMonth(
-                            appointment.getAgent().getId()
-                    ).getPerformanceTier().getValue();
+                    // Get sales agent tier (null if no agent assigned)
+                    String agentTier = null;
+                    if (appointment.getAgent() != null) {
+                        agentTier = rankingService.getSaleAgentCurrentMonth(
+                                appointment.getAgent().getId()
+                        ).getPerformanceTier().getValue();
+                    }
 
                     // Enrich with customer, agent, and thumbnail data
                     appointmentMapper.enrichViewingListItem(dto, appointment, customerTier, agentTier);
@@ -268,21 +290,69 @@ public class AppointmentServiceImpl implements AppointmentService {
         );
         viewingDetails.setPropertyOwner(ownerCard);
 
-        // Build sales agent card with tier and rating
-        IndividualSalesAgentPerformanceMonth agentRanking = rankingService.getSaleAgentCurrentMonth(
-                appointment.getAgent().getId()
-        );
-        IndividualSalesAgentPerformanceCareer agentRankingCareer = rankingService.getSaleAgentCareer(
-                appointment.getAgent().getId()
-        );
-        ViewingDetailsAdmin.SalesAgentSimpleCard agentCard = appointmentMapper.buildSalesAgentSimpleCard(
-                appointment.getAgent().getUser(),
-                agentRanking.getPerformanceTier().getValue(),
-                agentRankingCareer.getAvgRating().doubleValue(),
-                agentRankingCareer.getTotalRates()
-        );
-        viewingDetails.setSalesAgent(agentCard);
+        // Build sales agent card with tier and rating (only if agent is assigned)
+        if (appointment.getAgent() != null) {
+            IndividualSalesAgentPerformanceMonth agentRanking = rankingService.getSaleAgentCurrentMonth(
+                    appointment.getAgent().getId()
+            );
+            IndividualSalesAgentPerformanceCareer agentRankingCareer = rankingService.getSaleAgentCareer(
+                    appointment.getAgent().getId()
+            );
+            ViewingDetailsAdmin.SalesAgentSimpleCard agentCard = appointmentMapper.buildSalesAgentSimpleCard(
+                    appointment.getAgent().getUser(),
+                    agentRanking.getPerformanceTier().getValue(),
+                    agentRankingCareer.getAvgRating().doubleValue(),
+                    agentRankingCareer.getTotalRates()
+            );
+            viewingDetails.setSalesAgent(agentCard);
+        }
 
         return viewingDetails;
+    }
+
+    @Override
+    public int countByAgentId(UUID agentId) {
+        Long count = appointmentRepository.countByAgent_Id(agentId);
+        return count != null ? count.intValue() : 0;
+    }
+
+    @Override
+    public boolean assignAgent(UUID agentId, UUID appointmentId) {
+        // Find the appointment
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id: " + appointmentId));
+
+        // If agentId is null, remove current agent
+        if (agentId == null) {
+            if (appointment.getAgent() != null) {
+                appointment.setAgent(null);
+                appointment.setStatus(Constants.AppointmentStatusEnum.PENDING);
+                appointmentRepository.save(appointment);
+                log.info("Removed agent from appointment: {}", appointmentId);
+                return true;
+            }
+            return false; // No agent was assigned
+        }
+
+        // Find the new agent
+        User agentUser = userService.findById(agentId);
+        if (agentUser == null || agentUser.getSaleAgent() == null) {
+            throw new IllegalArgumentException("User is not a sales agent");
+        }
+
+        // Remove old agent if exists and assign new agent
+        if (appointment.getAgent() != null) {
+            log.info("Replacing agent {} with {} for appointment: {}",
+                    appointment.getAgent().getId(), agentId, appointmentId);
+        }
+
+        if (appointment.getStatus() == Constants.AppointmentStatusEnum.PENDING)
+            appointment.setStatus(Constants.AppointmentStatusEnum.CONFIRMED);
+
+        appointment.setAgent(agentUser.getSaleAgent());
+        appointmentRepository.save(appointment);
+        log.info("Assigned agent {} to appointment: {}", agentId, appointmentId);
+
+        return true;
     }
 }

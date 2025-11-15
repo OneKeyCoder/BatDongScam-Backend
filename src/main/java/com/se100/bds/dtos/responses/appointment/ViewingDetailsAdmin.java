@@ -22,6 +22,7 @@ public class ViewingDetailsAdmin extends AbstractBaseDataResponse {
     private String comment;
     private String customerRequirements;
     private String agentNotes;
+    private Constants.AppointmentStatusEnum status;
     private String viewingOutcome;
     private String customerInterestLevel;
     private PropertyCard propertyCard;

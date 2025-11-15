@@ -52,7 +52,6 @@ public class AppointmentDummyData {
         for (int i = 1; i <= 300; i++) {
             Property property = properties.get(random.nextInt(properties.size()));
             Customer customer = customers.get(random.nextInt(customers.size()));
-            SaleAgent agent = agents.get(random.nextInt(agents.size()));
 
             LocalDateTime requestedDate = LocalDateTime.now()
                     .plusDays(random.nextInt(60) - 30); // Between 30 days ago and 30 days ahead
@@ -65,8 +64,11 @@ public class AppointmentDummyData {
             };
             Constants.AppointmentStatusEnum status = statuses[random.nextInt(statuses.length)];
 
+            // Only assign agent if status is not PENDING
+            SaleAgent agent = null;
             LocalDateTime confirmedDate = null;
             if (status != Constants.AppointmentStatusEnum.PENDING) {
+                agent = agents.get(random.nextInt(agents.size()));
                 confirmedDate = requestedDate.plusHours(random.nextInt(48));
             }
 

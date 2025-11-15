@@ -36,4 +36,10 @@ public interface PropertyService {
     PropertyTypeResponse createPropertyType(CreatePropertyTypeRequest request) throws IOException;
     PropertyTypeResponse updatePropertyType(UpdatePropertyTypeRequest request) throws IOException;
     void deletePropertyType(UUID id) throws IOException;
+
+    // Helper methods
+    int countByAssignedAgentId(UUID agentId);
+
+    // Assignment
+    boolean assignAgent(UUID agentId, UUID propertyId);
 }

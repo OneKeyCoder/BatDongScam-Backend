@@ -111,7 +111,9 @@ public class AppointmentController extends AbstractBaseController {
             @Parameter(description = "District IDs to filter by")
             @RequestParam(required = false) List<UUID> districtIds,
             @Parameter(description = "Ward IDs to filter by")
-            @RequestParam(required = false) List<UUID> wardIds) {
+            @RequestParam(required = false) List<UUID> wardIds,
+            @Parameter(description = "Appointment status enums to filter by")
+            @RequestParam(required = false) List<Constants.AppointmentStatusEnum> statusEnums) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<ViewingListItemDto> viewingListItems = appointmentService.getViewingListItems(
                 pageable,
@@ -121,7 +123,8 @@ public class AppointmentController extends AbstractBaseController {
                 customerName, customerTiers,
                 requestDateFrom, requestDateTo,
                 minRating, maxRating,
-                cityIds, districtIds, wardIds
+                cityIds, districtIds, wardIds,
+                statusEnums
         );
         return responseFactory.successPage(viewingListItems, "Viewing list retrieved successfully");
     }

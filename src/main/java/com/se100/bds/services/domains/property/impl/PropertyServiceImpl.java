@@ -340,4 +340,46 @@ public class PropertyServiceImpl implements PropertyService {
         propertyTypeRepository.delete(propertyType);
         log.info("Deleted property type with id: {}", id);
     }
+
+    @Override
+    public int countByAssignedAgentId(UUID agentId) {
+        Long count = propertyRepository.countByAssignedAgent_Id(agentId);
+        return count != null ? count.intValue() : 0;
+    }
+
+    @Override
+    public boolean assignAgent(UUID agentId, UUID propertyId) {
+        // Find the property
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new EntityNotFoundException("Property not found with id: " + propertyId));
+
+        // If agentId is null, remove current agent
+        if (agentId == null) {
+            if (property.getAssignedAgent() != null) {
+                property.setAssignedAgent(null);
+                propertyRepository.save(property);
+                log.info("Removed agent from property: {}", propertyId);
+                return true;
+            }
+            return false; // No agent was assigned
+        }
+
+        // Find the new agent
+        User agentUser = userService.findById(agentId);
+        if (agentUser == null || agentUser.getSaleAgent() == null) {
+            throw new IllegalArgumentException("User is not a sales agent");
+        }
+
+        // Remove old agent if exists and assign new agent
+        if (property.getAssignedAgent() != null) {
+            log.info("Replacing agent {} with {} for property: {}",
+                    property.getAssignedAgent().getId(), agentId, propertyId);
+        }
+
+        property.setAssignedAgent(agentUser.getSaleAgent());
+        propertyRepository.save(property);
+        log.info("Assigned agent {} to property: {}", agentId, propertyId);
+
+        return true;
+    }
 }

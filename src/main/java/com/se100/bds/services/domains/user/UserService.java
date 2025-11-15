@@ -3,6 +3,7 @@ package com.se100.bds.services.domains.user;
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
 import com.se100.bds.dtos.requests.account.UpdateAccountDto;
 import com.se100.bds.dtos.responses.user.listitem.CustomerListItem;
+import com.se100.bds.dtos.responses.user.listitem.FreeAgentListItem;
 import com.se100.bds.dtos.responses.user.listitem.PropertyOwnerListItem;
 import com.se100.bds.dtos.responses.user.listitem.SaleAgentListItem;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
@@ -110,6 +111,14 @@ public interface UserService {
             Integer minRanking, Integer maxRanking,
             LocalDateTime joinedDateFrom, LocalDateTime joinedDateTo,
             List<UUID> cityIds, List<UUID> districtIds, List<UUID> wardIds
+    );
+    Page<FreeAgentListItem> getAllFreeAgentItemsWithFilters(
+            Pageable pageable,
+            String agentNameOrCode,
+            List<Constants.PerformanceTierEnum> agentTiers,
+            Integer minAssignedAppointments, Integer maxAssignedAppointments,
+            Integer minAssignedProperties, Integer maxAssignedProperties,
+            Integer minCurrentlyHandle, Integer maxCurrentlyHandle
     );
 
     /// Internal

@@ -3,6 +3,7 @@ package com.se100.bds.services.domains.user.impl;
 import com.se100.bds.dtos.requests.account.UpdateAccountDto;
 import com.se100.bds.dtos.requests.auth.RegisterRequest;
 import com.se100.bds.dtos.responses.user.listitem.CustomerListItem;
+import com.se100.bds.dtos.responses.user.listitem.FreeAgentListItem;
 import com.se100.bds.dtos.responses.user.listitem.PropertyOwnerListItem;
 import com.se100.bds.dtos.responses.user.listitem.SaleAgentListItem;
 import com.se100.bds.dtos.responses.user.meprofile.MeResponse;
@@ -29,6 +30,7 @@ import com.se100.bds.repositories.domains.user.SaleAgentRepository;
 import com.se100.bds.repositories.domains.user.UserRepository;
 import com.se100.bds.securities.JwtUserDetails;
 import com.se100.bds.services.MessageSourceService;
+import com.se100.bds.services.domains.appointment.AppointmentService;
 import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.user.UserService;
@@ -72,6 +74,7 @@ public class UserServiceImpl implements UserService {
     private final MessageSourceService messageSourceService;
     private final UserMapper userMapper;
     private final PropertyService propertyService;
+    private final AppointmentService appointmentService;
     private final RankingService rankingService;
     private final WardRepository wardRepository;
     private final CloudinaryService cloudinaryService;
@@ -84,6 +87,7 @@ public class UserServiceImpl implements UserService {
             MessageSourceService messageSourceService,
             UserMapper userMapper,
             @Lazy PropertyService propertyService,
+            @Lazy AppointmentService appointmentService,
             RankingService rankingService,
             CloudinaryService cloudinaryService,
             WardRepository wardRepository
@@ -95,6 +99,7 @@ public class UserServiceImpl implements UserService {
         this.messageSourceService = messageSourceService;
         this.userMapper = userMapper;
         this.propertyService = propertyService;
+        this.appointmentService = appointmentService;
         this.cloudinaryService = cloudinaryService;
         this.rankingService = rankingService;
         this.wardRepository = wardRepository;
@@ -1357,6 +1362,122 @@ public class UserServiceImpl implements UserService {
         }
 
         return new PageImpl<>(ownerListItemList);
+    }
+
+    @Override
+    public Page<FreeAgentListItem> getAllFreeAgentItemsWithFilters(
+            Pageable pageable,
+            String agentNameOrCode,
+            List<Constants.PerformanceTierEnum> agentTiers,
+            Integer minAssignedAppointments, Integer maxAssignedAppointments,
+            Integer minAssignedProperties, Integer maxAssignedProperties,
+            Integer minCurrentlyHandle, Integer maxCurrentlyHandle
+    ) {
+        // Get all sale agents
+        List<User> agents;
+        if (agentNameOrCode != null && !agentNameOrCode.isEmpty()) {
+            // Search by name or employee code
+            agents = userRepository.findAllByFullNameIsLikeIgnoreCaseAndRole(agentNameOrCode, Constants.RoleEnum.SALESAGENT);
+            // Also search by employee code
+            List<User> agentsByCode = userRepository.findAllByRole(Constants.RoleEnum.SALESAGENT).stream()
+                    .filter(u -> u.getSaleAgent() != null &&
+                            u.getSaleAgent().getEmployeeCode() != null &&
+                            u.getSaleAgent().getEmployeeCode().toLowerCase().contains(agentNameOrCode.toLowerCase()))
+                    .toList();
+            // Merge and remove duplicates
+            List<User> combined = new ArrayList<>(agents);
+            for (User agent : agentsByCode) {
+                if (!combined.contains(agent)) {
+                    combined.add(agent);
+                }
+            }
+            agents = combined;
+        } else {
+            agents = userRepository.findAllByRole(Constants.RoleEnum.SALESAGENT);
+        }
+
+        List<FreeAgentListItem> freeAgentList = new ArrayList<>();
+
+        for (User agentUser : agents) {
+            SaleAgent saleAgent = agentUser.getSaleAgent();
+            if (saleAgent == null) continue;
+
+            // Count assigned appointments using service
+            int assignedAppointments = appointmentService.countByAgentId(saleAgent.getId());
+
+            // Count assigned properties using service
+            int assignedProperties = propertyService.countByAssignedAgentId(saleAgent.getId());
+
+            // Calculate currently handling
+            int currentlyHandling = assignedAppointments + assignedProperties;
+
+            // Filter by assigned appointments
+            if (minAssignedAppointments != null && assignedAppointments < minAssignedAppointments) {
+                continue;
+            }
+            if (maxAssignedAppointments != null && assignedAppointments > maxAssignedAppointments) {
+                continue;
+            }
+
+            // Filter by assigned properties
+            if (minAssignedProperties != null && assignedProperties < minAssignedProperties) {
+                continue;
+            }
+            if (maxAssignedProperties != null && assignedProperties > maxAssignedProperties) {
+                continue;
+            }
+
+            // Filter by currently handling
+            if (minCurrentlyHandle != null && currentlyHandling < minCurrentlyHandle) {
+                continue;
+            }
+            if (maxCurrentlyHandle != null && currentlyHandling > maxCurrentlyHandle) {
+                continue;
+            }
+
+            // Get agent tier from ranking service
+            IndividualSalesAgentPerformanceMonth agentPerformanceMonth = rankingService.getSaleAgentCurrentMonth(agentUser.getId());
+            String tier = agentPerformanceMonth.getPerformanceTier().getValue();
+
+            // Filter by tier
+            if (agentTiers != null && !agentTiers.isEmpty()) {
+                boolean tierMatched = false;
+                for (Constants.PerformanceTierEnum desiredTier : agentTiers) {
+                    if (agentPerformanceMonth.getPerformanceTier() == desiredTier) {
+                        tierMatched = true;
+                        break;
+                    }
+                }
+                if (!tierMatched) {
+                    continue;
+                }
+            }
+
+            // Build FreeAgentListItem
+            FreeAgentListItem freeAgentListItem = FreeAgentListItem.builder()
+                    .id(agentUser.getId())
+                    .createdAt(agentUser.getCreatedAt())
+                    .updatedAt(agentUser.getUpdatedAt())
+                    .fullName(agentUser.getFullName())
+                    .ranking(agentPerformanceMonth.getRankingPosition())
+                    .employeeCode(saleAgent.getEmployeeCode())
+                    .avatarUrl(agentUser.getAvatarUrl())
+                    .tier(tier)
+                    .assignedAppointments(assignedAppointments)
+                    .assignedProperties(assignedProperties)
+                    .currentlyHandling(currentlyHandling)
+                    .maxProperties(saleAgent.getMaxProperties())
+                    .build();
+
+            freeAgentList.add(freeAgentListItem);
+        }
+
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), freeAgentList.size());
+        List<FreeAgentListItem> pagedList = freeAgentList.subList(start, end);
+
+        return new PageImpl<>(pagedList, pageable, freeAgentList.size());
     }
 
     @Override
