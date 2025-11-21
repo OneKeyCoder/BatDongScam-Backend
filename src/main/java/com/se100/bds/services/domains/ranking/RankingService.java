@@ -17,4 +17,6 @@ public interface RankingService {
     IndividualPropertyOwnerContributionMonth getPropertyOwnerMonth(UUID propertyOwnerId, int month, int year);
     IndividualPropertyOwnerContributionMonth getPropertyOwnerCurrentMonth(UUID propertyOwnerId);
     IndividualPropertyOwnerContributionAll getPropertyOwnerAll(UUID propertyOwnerId);
+
+    // TODO: Action methods
 }

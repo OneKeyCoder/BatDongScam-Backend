@@ -1,4 +1,4 @@
-package com.se100.bds.controllers;
+package com.se100.bds.controllers.external;
 
 
 import com.se100.bds.controllers.base.AbstractBaseController;
