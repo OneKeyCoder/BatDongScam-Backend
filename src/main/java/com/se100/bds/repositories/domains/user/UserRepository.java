@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -105,4 +106,6 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
             @Param("districtIds") List<UUID> districtIds,
             @Param("wardIds") List<UUID> wardIds
     );
+
+    List<User> findAllByRoleAndStatusIn(Constants.RoleEnum role, Collection<Constants.StatusProfileEnum> statuses);
 }
