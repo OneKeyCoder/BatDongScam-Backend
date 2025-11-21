@@ -123,4 +123,5 @@ public interface UserService {
 
     /// Internal
     List<User> findAllByNameAndRole(String name, Constants.RoleEnum roleEnum);
+    List<User> findAllByRoleAndStillAvailable(Constants.RoleEnum roleEnum);
 }

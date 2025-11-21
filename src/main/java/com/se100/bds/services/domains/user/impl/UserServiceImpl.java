@@ -1487,4 +1487,12 @@ public class UserServiceImpl implements UserService {
         else
             return userRepository.findAllByRole(roleEnum);
     }
+
+    @Override
+    public List<User> findAllByRoleAndStillAvailable(Constants.RoleEnum roleEnum) {
+        return userRepository.findAllByRoleAndStatusIn(
+                roleEnum,
+                List.of(Constants.StatusProfileEnum.ACTIVE)
+        );
+    }
 }

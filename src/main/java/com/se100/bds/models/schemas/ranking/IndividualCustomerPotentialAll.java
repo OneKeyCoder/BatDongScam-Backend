@@ -22,7 +22,7 @@ public class IndividualCustomerPotentialAll extends AbstractBaseMongoSchema {
     private Integer leadScore;
 
     @Field("lead_position")
-    private String leadPosition;
+    private Integer leadPosition;
 
     @Field("viewings_requested")
     private Integer viewingsRequested;
