@@ -338,6 +338,12 @@ public class PropertyServiceImpl implements PropertyService {
             log.info("Admin created property {} for owner {}", saved.getId(), owner.getId());
         } else {
             log.info("Owner {} created property {}", owner.getId(), saved.getId());
+            // Track property listing action for ranking
+            if (saved.getTransactionType() == Constants.TransactionTypeEnum.SALE) {
+                rankingService.propertyOwnerAction(owner.getId(), Constants.PropertyOwnerActionEnum.PROPERTY_FOR_SALE_LISTED, null);
+            } else if (saved.getTransactionType() == Constants.TransactionTypeEnum.RENTAL) {
+                rankingService.propertyOwnerAction(owner.getId(), Constants.PropertyOwnerActionEnum.PROPERTY_FOR_RENT_LISTED, null);
+            }
         }
         return propertyMapper.mapTo(saved, PropertyDetails.class);
     }
@@ -446,6 +452,14 @@ public class PropertyServiceImpl implements PropertyService {
             property.setStatus(targetStatus);
             Property saved = propertyRepository.save(property);
             log.info("Owner {} updated property {} status to {}", currentUser.getId(), saved.getId(), targetStatus);
+
+            // Track property status change action for ranking
+            if (targetStatus == Constants.PropertyStatusEnum.SOLD) {
+                rankingService.propertyOwnerAction(property.getOwner().getId(), Constants.PropertyOwnerActionEnum.PROPERTY_SOLD, null);
+            } else if (targetStatus == Constants.PropertyStatusEnum.RENTED) {
+                rankingService.propertyOwnerAction(property.getOwner().getId(), Constants.PropertyOwnerActionEnum.PROPERTY_RENTED, null);
+            }
+
             return propertyMapper.mapTo(saved, PropertyDetails.class);
         }
 
@@ -599,6 +613,9 @@ public class PropertyServiceImpl implements PropertyService {
         property.setAssignedAgent(agentUser.getSaleAgent());
         propertyRepository.save(property);
         log.info("Assigned agent {} to property: {}", agentId, propertyId);
+
+        // Track property assignment action for agent ranking
+        rankingService.agentAction(agentId, Constants.AgentActionEnum.PROPERTY_ASSIGNED, null);
 
         return true;
     }
