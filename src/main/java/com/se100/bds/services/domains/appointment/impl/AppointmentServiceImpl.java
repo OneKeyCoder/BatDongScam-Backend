@@ -27,6 +27,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -418,6 +419,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointmentRepository.save(appointment);
         log.info("Assigned agent {} to appointment: {}", agentId, appointmentId);
 
+        // Track appointment assignment action for agent ranking
+        rankingService.agentAction(agentId, Constants.AgentActionEnum.APPOINTMENT_ASSIGNED, null);
+
         return true;
     }
 
@@ -458,6 +462,16 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (status != null) {
             appointment.setStatus(status);
             updated = true;
+
+            // If status is COMPLETED, track for ranking
+            if (status == Constants.AppointmentStatusEnum.COMPLETED) {
+                if (appointment.getAgent() != null) {
+                    rankingService.agentAction(appointment.getAgent().getId(), Constants.AgentActionEnum.APPOINTMENT_COMPLETED, null);
+                }
+                if (appointment.getCustomer() != null) {
+                    rankingService.customerAction(appointment.getCustomer().getId(), Constants.CustomerActionEnum.VIEWING_ATTENDED, null);
+                }
+            }
 
             // If status is CANCELLED, update cancelled fields
             if (status == Constants.AppointmentStatusEnum.CANCELLED) {
@@ -515,6 +529,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (updated) {
             appointmentRepository.save(appointment);
             log.info("Rated appointment {} with rating: {}", appointmentId, rating);
+
+            // Track rating action for agent ranking
+            if (rating != null && appointment.getAgent() != null) {
+                rankingService.agentAction(appointment.getAgent().getId(), Constants.AgentActionEnum.RATED, BigDecimal.valueOf(rating));
+            }
         }
 
         return updated;

@@ -509,4 +509,61 @@ public final class Constants {
         }
     }
 
+    @Getter
+    @AllArgsConstructor
+    public enum AgentActionEnum {
+        PROPERTY_ASSIGNED("PROPERTY_ASSIGNED"),
+        APPOINTMENT_ASSIGNED("APPOINTMENT_ASSIGNED"),
+        APPOINTMENT_COMPLETED("APPOINTMENT_COMPLETED"),
+        CONTRACT_SIGNED("CONTRACT_SIGNED"),
+        RATED("RATED");
+
+        private final String value;
+
+        public static AgentActionEnum get(final String name) {
+            return Stream.of(AgentActionEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid agent action name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum CustomerActionEnum {
+        VIEWING_REQUESTED("VIEWING_REQUESTED"),
+        VIEWING_ATTENDED("VIEWING_ATTENDED"),
+        SPENDING_MADE("SPENDING_MADE"),
+        PURCHASE_MADE("PURCHASE_MADE"),
+        RENTAL_MADE("RENTAL_MADE"),
+        CONTRACT_SIGNED("CONTRACT_SIGNED");
+
+        private final String value;
+
+        public static CustomerActionEnum get(final String name) {
+            return Stream.of(CustomerActionEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid customer action name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum PropertyOwnerActionEnum {
+        PROPERTY_FOR_SALE_LISTED("PROPERTY_FOR_SALE_LISTED"),
+        PROPERTY_FOR_RENT_LISTED("PROPERTY_FOR_RENT_LISTED"),
+        PROPERTY_SOLD("PROPERTY_SOLD"),
+        PROPERTY_RENTED("PROPERTY_RENTED"),
+        MONEY_RECEIVED("MONEY_RECEIVED");
+
+        private final String value;
+
+        public static PropertyOwnerActionEnum get(final String name) {
+            return Stream.of(PropertyOwnerActionEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid property owner action name: %s", name)));
+        }
+    }
 }

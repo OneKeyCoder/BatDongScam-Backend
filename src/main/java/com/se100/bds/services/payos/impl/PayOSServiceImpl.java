@@ -8,8 +8,10 @@ import com.se100.bds.models.entities.user.User;
 import com.se100.bds.repositories.domains.contract.ContractRepository;
 import com.se100.bds.repositories.domains.contract.PaymentRepository;
 import com.se100.bds.repositories.domains.property.PropertyRepository;
+import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.services.payos.PayOSService;
+import com.se100.bds.utils.Constants;
 import com.se100.bds.utils.Constants.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,6 +47,7 @@ public class PayOSServiceImpl implements PayOSService {
     private final PropertyRepository propertyRepository;
 //    private final ContractService contractService;
     private final UserService userService;
+    private final RankingService rankingService;
 
     @Value("${payos.return-url}")
     private String defaultReturnUrl;
@@ -58,7 +61,8 @@ public class PayOSServiceImpl implements PayOSService {
             final PaymentRepository paymentRepository,
             final PropertyRepository propertyRepository,
 //            final ContractService contractService,
-            final UserService userService
+            final UserService userService,
+            final RankingService rankingService
     ) {
         this.payOS = payOS;
         this.contractRepository = contractRepository;
@@ -66,6 +70,7 @@ public class PayOSServiceImpl implements PayOSService {
         this.propertyRepository = propertyRepository;
 //        this.contractService = contractService;
         this.userService = userService;
+        this.rankingService = rankingService;
     }
 
     @Override
@@ -754,6 +759,33 @@ public class PayOSServiceImpl implements PayOSService {
 
         log.info("Distributing payment {}. amount={}, commission={}, serviceFee={}, netToOwner={}",
                 payment.getId(), payment.getAmount(), commission, serviceFee, netToOwner);
+
+        // Track ranking actions for contract payment
+        if (contract.getAgent() != null) {
+            rankingService.agentAction(contract.getAgent().getId(), Constants.AgentActionEnum.CONTRACT_SIGNED, null);
+        }
+
+        if (contract.getCustomer() != null) {
+            UUID customerId = contract.getCustomer().getId();
+
+            // Track contract signed
+            rankingService.customerAction(customerId, Constants.CustomerActionEnum.CONTRACT_SIGNED, null);
+
+            // Track spending
+            rankingService.customerAction(customerId, Constants.CustomerActionEnum.SPENDING_MADE, payment.getAmount());
+
+            // Track purchase or rental
+            if (contract.getContractType() == Constants.ContractTypeEnum.PURCHASE) {
+                rankingService.customerAction(customerId, Constants.CustomerActionEnum.PURCHASE_MADE, null);
+            } else if (contract.getContractType() == Constants.ContractTypeEnum.RENTAL) {
+                rankingService.customerAction(customerId, Constants.CustomerActionEnum.RENTAL_MADE, null);
+            }
+        }
+
+        // Track money received for property owner
+        if (property.getOwner() != null) {
+            rankingService.propertyOwnerAction(property.getOwner().getId(), Constants.PropertyOwnerActionEnum.MONEY_RECEIVED, netToOwner);
+        }
 
     }
 }
