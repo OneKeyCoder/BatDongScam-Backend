@@ -18,6 +18,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -284,4 +285,8 @@ public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSp
 
     @EntityGraph(attributePaths = {"owner", "owner.user", "assignedAgent", "assignedAgent.user", "mediaList", "ward", "ward.district", "ward.district.city", "propertyType"})
     Page<Property> findAllByOwner_IdInAndAssignedAgent_Id(Collection<UUID> ownerIds, UUID assignedAgentId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"ward.district.city", "propertyType"})
+    Optional<Property> findById(UUID propertyId);
 }
+

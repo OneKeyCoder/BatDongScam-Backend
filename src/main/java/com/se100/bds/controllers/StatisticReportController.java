@@ -4,6 +4,7 @@ import com.se100.bds.controllers.base.AbstractBaseController;
 import com.se100.bds.dtos.responses.SingleResponse;
 import com.se100.bds.dtos.responses.statisticreport.AgentPerformanceStats;
 import com.se100.bds.dtos.responses.statisticreport.CustomerStats;
+import com.se100.bds.dtos.responses.statisticreport.FinancialStats;
 import com.se100.bds.dtos.responses.statisticreport.PropertyOwnerStats;
 import com.se100.bds.services.domains.report.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,5 +73,19 @@ public class StatisticReportController extends AbstractBaseController {
             @PathVariable int year) {
         PropertyOwnerStats stats = reportService.getPropertyOwnerStats(year);
         return responseFactory.successSingle(stats, "Property owner stats retrieved successfully");
+    }
+
+    @GetMapping("/financial/{year}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get financial stats for a year", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved financial stats"),
+        @ApiResponse(responseCode = "404", description = "Year not found")
+    })
+    public ResponseEntity<SingleResponse<FinancialStats>> getFinancialStats(
+            @Parameter(description = "Year for the stats", required = true)
+            @PathVariable int year) {
+        FinancialStats stats = reportService.getFinancialStats(year);
+        return responseFactory.successSingle(stats, "Financial stats retrieved successfully");
     }
 }

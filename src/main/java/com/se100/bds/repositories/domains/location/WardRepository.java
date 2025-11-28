@@ -46,4 +46,17 @@ public interface WardRepository extends JpaRepository<Ward, UUID>, JpaSpecificat
 
     @EntityGraph(attributePaths = {"properties"})
     Optional<Ward> findById(UUID id);
+
+    @Query("""
+        SELECT w.id
+        FROM Ward w
+    """)
+    List<UUID> getAllIds();
+
+    @Query("""
+        SELECT w.wardName
+        FROM Ward w
+        WHERE w.id = :wardId
+    """)
+    String getWardName(@Param("wardId") UUID wardId);
 }

@@ -12,6 +12,7 @@ import com.se100.bds.repositories.domains.user.CustomerRepository;
 import com.se100.bds.repositories.domains.user.PropertyOwnerRepository;
 import com.se100.bds.repositories.domains.user.SaleAgentRepository;
 import com.se100.bds.repositories.domains.mongo.ranking.*;
+import com.se100.bds.services.domains.report.scheduler.FinancialReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.UserReportScheduler;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class RankingDummyData {
     private final IndividualCustomerPotentialMonthRepository customerPotentialMonthRepository;
     private final IndividualCustomerPotentialAllRepository customerPotentialAllRepository;
 
+    private final FinancialReportScheduler financialReportScheduler;
     private final UserReportScheduler userReportScheduler;
 
     public boolean rankingDataExists() {
@@ -85,6 +87,19 @@ public class RankingDummyData {
         month = startMonth;
         while (year < currentYear || (year == currentYear && month <= currentMonth)) {
             userReportScheduler.initData(month, year);
+
+            month++;
+            if (month > 12) {
+                month = 1;
+                year++;
+            }
+        }
+
+        year = startYear;
+        month = startMonth;
+        while (year < currentYear || (year == currentYear && month <= currentMonth)) {
+            financialReportScheduler.initFinancialReportData(month, year).join();
+            financialReportScheduler.recalculateSalaryForInitData(month, year);
 
             month++;
             if (month > 12) {

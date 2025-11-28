@@ -11,7 +11,6 @@ import com.se100.bds.repositories.domains.mongo.ranking.*;
 import com.se100.bds.repositories.domains.mongo.report.AgentPerformanceReportRepository;
 import com.se100.bds.repositories.domains.mongo.report.CustomerAnalyticsReportRepository;
 import com.se100.bds.repositories.domains.mongo.report.PropertyOwnerContributionReportRepository;
-import com.se100.bds.repositories.domains.property.PropertyRepository;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +35,11 @@ public class UserReportScheduler {
     private final IndividualCustomerPotentialAllRepository individualCustomerPotentialAllRepository;
     private final IndividualSalesAgentPerformanceCareerRepository individualSalesAgentPerformanceCareerRepository;
     private final IndividualPropertyOwnerContributionAllRepository individualPropertyOwnerContributionAllRepository;
-    private final PropertyRepository propertyRepository;
 
     private final UserService userService;
 
-    // Run at 00:00 AM on the last day of every month
-    @Scheduled(cron = "0 0 0 L * ?")
+    // Run at 12:00 PM on the last day of every month
+    @Scheduled(cron = "0 12 0 L * ?")
     protected void monthlyGenerator() {
         int month = LocalDate.now().getMonthValue();
         int year = LocalDate.now().getYear();

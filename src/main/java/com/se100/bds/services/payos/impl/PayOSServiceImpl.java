@@ -9,6 +9,7 @@ import com.se100.bds.repositories.domains.contract.ContractRepository;
 import com.se100.bds.repositories.domains.contract.PaymentRepository;
 import com.se100.bds.repositories.domains.property.PropertyRepository;
 import com.se100.bds.services.domains.ranking.RankingService;
+import com.se100.bds.services.domains.report.FinancialUpdateService;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.services.payos.PayOSService;
 import com.se100.bds.utils.Constants;
@@ -48,6 +49,7 @@ public class PayOSServiceImpl implements PayOSService {
 //    private final ContractService contractService;
     private final UserService userService;
     private final RankingService rankingService;
+    private final FinancialUpdateService financialUpdateService;
 
     @Value("${payos.return-url}")
     private String defaultReturnUrl;
@@ -62,8 +64,8 @@ public class PayOSServiceImpl implements PayOSService {
             final PropertyRepository propertyRepository,
 //            final ContractService contractService,
             final UserService userService,
-            final RankingService rankingService
-    ) {
+            final RankingService rankingService,
+            FinancialUpdateService financialUpdateService) {
         this.payOS = payOS;
         this.contractRepository = contractRepository;
         this.paymentRepository = paymentRepository;
@@ -71,6 +73,7 @@ public class PayOSServiceImpl implements PayOSService {
 //        this.contractService = contractService;
         this.userService = userService;
         this.rankingService = rankingService;
+        this.financialUpdateService = financialUpdateService;
     }
 
     @Override
@@ -773,6 +776,9 @@ public class PayOSServiceImpl implements PayOSService {
 
             // Track spending
             rankingService.customerAction(customerId, Constants.CustomerActionEnum.SPENDING_MADE, payment.getAmount());
+            if (payment.getProperty() != null) {
+                financialUpdateService.transaction(payment.getProperty().getId(), payment.getAmount(), LocalDateTime.now().getMonthValue(), LocalDateTime.now().getYear());
+            }
 
             // Track purchase or rental
             if (contract.getContractType() == Constants.ContractTypeEnum.PURCHASE) {

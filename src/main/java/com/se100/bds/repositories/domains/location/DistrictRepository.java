@@ -49,5 +49,25 @@ public interface DistrictRepository extends JpaRepository<District, UUID>, JpaSp
 
     @EntityGraph(attributePaths = {"wards", "wards.properties"})
     Optional<District> findById(UUID id);
-}
 
+    @Query("""
+        SELECT d.id
+        FROM District d
+    """)
+    List<UUID> getAllIds();
+
+    @Query("""
+        SELECT d.districtName
+        FROM District d
+        WHERE d.id = :districtId
+    """)
+    String getDistrictName(@Param("districtId") UUID districtId);
+
+    @Query("""
+        SELECT d.districtName
+        FROM District d
+        JOIN Ward w ON w.district.id = d.id
+        WHERE w.id = :wardId
+    """)
+    String getDistrictNameByWardId(@Param("wardId") UUID wardId);
+}

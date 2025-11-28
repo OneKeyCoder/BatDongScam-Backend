@@ -33,4 +33,10 @@ public interface LocationService {
     LocationDetailsResponse create(CreateLocationRequest createLocationRequest) throws IOException;
     LocationDetailsResponse update(UpdateLocationRequest updateLocationRequest) throws IOException;
     boolean delete(UUID locationId, Constants.LocationEnum locationTypeEnum);
+
+    List<UUID> getAllCityIds();
+    List<UUID> getAllDistrictIds();
+    List<UUID> getAllWardIds();
+
+    String getLocationName(UUID locationId, Constants.LocationEnum locationTypeEnum);
 }
