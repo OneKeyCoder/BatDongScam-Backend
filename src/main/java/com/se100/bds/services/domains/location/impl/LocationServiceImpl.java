@@ -453,4 +453,41 @@ public class LocationServiceImpl implements LocationService {
             return false;
         }
     }
+
+    @Override
+    public List<UUID> getAllCityIds() {
+        return cityRepository.getAllIds();
+    }
+
+    @Override
+    public List<UUID> getAllDistrictIds() {
+        return districtRepository.getAllIds();
+    }
+
+    @Override
+    public List<UUID> getAllWardIds() {
+        return wardRepository.getAllIds();
+    }
+
+    @Override
+    public String getLocationName(UUID locationId, Constants.LocationEnum locationTypeEnum) {
+        switch (locationTypeEnum) {
+            case CITY -> {
+                return cityRepository.getCityName(locationId);
+            }
+            case DISTRICT -> {
+                String cityName = cityRepository.getCityNameByDistrictId(locationId);
+                String districtName = districtRepository.getDistrictName(locationId);
+                return districtName + ", " + cityName;
+            }
+            case WARD ->  {
+                String cityName = cityRepository.getCityNameByWardId(locationId);
+                String districtName = districtRepository.getDistrictNameByWardId(locationId);
+                String wardName = wardRepository.getWardName(locationId);
+                return wardName + ", " + districtName + ", " + cityName;
+            }
+        }
+
+        return "";
+    }
 }

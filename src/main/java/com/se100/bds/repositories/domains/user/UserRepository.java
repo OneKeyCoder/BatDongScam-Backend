@@ -113,4 +113,13 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Integer countByRoleAndCreatedAtYearAndMonth(@Param("role") Constants.RoleEnum role, @Param("year") int year, @Param("month") int month);
 
     Integer countByRole(Constants.RoleEnum role);
+
+    @Query("""
+    SELECT u.id
+    FROM User u
+    WHERE u.saleAgent IS NOT NULL
+      AND u.role = com.se100.bds.utils.Constants.RoleEnum.SALESAGENT
+      AND u.status NOT IN (com.se100.bds.utils.Constants.StatusProfileEnum.DELETED, com.se100.bds.utils.Constants.StatusProfileEnum.SUSPENDED)
+""")
+    List<UUID> findAllCurrentAgent();
 }

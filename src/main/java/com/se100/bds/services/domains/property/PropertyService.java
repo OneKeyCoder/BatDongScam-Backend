@@ -55,4 +55,8 @@ public interface PropertyService {
             Pageable pageable,
             String propertyOwnerName
     );
+
+    List<UUID> getAllAvailablePropertyTypeIds();
+
+    String getPropertyTypeName(UUID propertyTypeId);
 }

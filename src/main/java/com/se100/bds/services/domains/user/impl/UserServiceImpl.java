@@ -57,6 +57,7 @@ import org.springframework.validation.FieldError;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -1533,6 +1534,11 @@ public class UserServiceImpl implements UserService {
         if (month == 0 || year == 0)
             return userRepository.countByRole(roleEnum);
         return userRepository.countByRoleAndCreatedAtYearAndMonth(roleEnum, year, month);
+    }
+
+    @Override
+    public List<UUID> getAllCurrentAgentIds() {
+        return userRepository.findAllCurrentAgent();
     }
 
 }

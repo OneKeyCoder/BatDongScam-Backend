@@ -51,5 +51,34 @@ public interface CityRepository extends JpaRepository<City, UUID>, JpaSpecificat
 
     @EntityGraph(attributePaths = {"districts", "districts.wards", "districts.wards.properties"})
     Optional<City> findById(UUID id);
-}
 
+    @Query("""
+        SELECT c.id
+        FROM City c
+    """)
+    List<UUID> getAllIds();
+
+    @Query("""
+        SELECT c.cityName
+        FROM City c
+        WHERE c.id = :cityId
+    """)
+    String getCityName(@Param("cityId") UUID cityId);
+
+    @Query("""
+        SELECT c.cityName
+        FROM City c
+        JOIN District d ON d.city.id = c.id
+        WHERE d.id = :districtId
+    """)
+    String getCityNameByDistrictId(@Param("districtId") UUID districtId);
+
+    @Query("""
+        SELECT c.cityName
+        FROM City c
+        JOIN District d ON d.city.id = c.id
+        JOIN Ward w ON w.district.id = d.id
+        WHERE w.id = :wardId
+    """)
+    String getCityNameByWardId(@Param("wardId") UUID wardId);
+}

@@ -125,4 +125,5 @@ public interface UserService {
     List<User> findAllByNameAndRole(String name, Constants.RoleEnum roleEnum);
     List<User> findAllByRoleAndStillAvailable(Constants.RoleEnum roleEnum);
     Integer countNewUsersByRoleAndMonthAndYear(Constants.RoleEnum roleEnum, int month, int year);
+    List<UUID> getAllCurrentAgentIds();
 }

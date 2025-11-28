@@ -2,21 +2,24 @@ package com.se100.bds.services.domains.report.impl;
 
 import com.se100.bds.dtos.responses.statisticreport.AgentPerformanceStats;
 import com.se100.bds.dtos.responses.statisticreport.CustomerStats;
+import com.se100.bds.dtos.responses.statisticreport.FinancialStats;
 import com.se100.bds.dtos.responses.statisticreport.PropertyOwnerStats;
 import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceMonth;
-import com.se100.bds.models.schemas.report.AgentPerformanceReport;
+import com.se100.bds.models.schemas.report.*;
 import com.se100.bds.models.schemas.ranking.IndividualCustomerPotentialMonth;
 import com.se100.bds.models.schemas.ranking.IndividualPropertyOwnerContributionMonth;
-import com.se100.bds.models.schemas.report.CustomerAnalyticsReport;
-import com.se100.bds.models.schemas.report.PropertyOwnerContributionReport;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualSalesAgentPerformanceMonthRepository;
 import com.se100.bds.repositories.domains.mongo.report.AgentPerformanceReportRepository;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualCustomerPotentialMonthRepository;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualPropertyOwnerContributionMonthRepository;
 import com.se100.bds.repositories.domains.mongo.report.CustomerAnalyticsReportRepository;
+import com.se100.bds.repositories.domains.mongo.report.FinancialReportRepository;
 import com.se100.bds.repositories.domains.mongo.report.PropertyOwnerContributionReportRepository;
+import com.se100.bds.services.domains.location.LocationService;
+import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.report.ReportService;
+import com.se100.bds.services.domains.report.scheduler.FinancialReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.UserReportScheduler;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
@@ -26,10 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,12 +42,15 @@ public class ReportServiceImpl implements ReportService {
     private final UserReportScheduler userReportScheduler; // God forgive me
     private final AgentPerformanceReportRepository agentPerformanceReportRepository;
     private final IndividualSalesAgentPerformanceMonthRepository individualSalesAgentPerformanceMonthRepository;
+    private final FinancialReportRepository financialReportRepository;
 
     // Added repositories for CustomerStats and PropertyOwnerStats
     private final CustomerAnalyticsReportRepository customerAnalyticsReportRepository;
     private final PropertyOwnerContributionReportRepository propertyOwnerContributionReportRepository;
     private final IndividualCustomerPotentialMonthRepository individualCustomerPotentialMonthRepository;
     private final IndividualPropertyOwnerContributionMonthRepository individualPropertyOwnerContributionMonthRepository;
+    private final LocationService locationService;
+    private final PropertyService propertyService;
 
     @Override
     public AgentPerformanceStats getAgentPerformanceStats(int year) {
@@ -204,5 +207,80 @@ public class ReportServiceImpl implements ReportService {
         propertyOwnerStats.setTierDistribution(tierDistribution);
 
         return propertyOwnerStats;
+    }
+
+    @Override
+    public FinancialStats getFinancialStats(int year) {
+        int month;
+        int currentYear = LocalDate.now().getYear();
+        if (year > currentYear) return null;
+        if (currentYear == year) {
+            month = LocalDate.now().getMonthValue();
+        } else
+            month = 12;
+
+        FinancialReport financialReport = financialReportRepository.findByBaseReportData_MonthAndBaseReportData_Year(
+                month, year
+        );
+
+        FinancialStats financialStats = new FinancialStats();
+        financialStats.setTotalRevenue(financialReport.getTotalRevenue());
+        financialStats.setTax(financialReport.getTax());
+        financialStats.setNetProfit(financialReport.getNetProfit());
+        financialStats.setAvgRating(financialStats.getAvgRating());
+        financialStats.setTotalRates(financialReport.getTotalRates());
+
+        List<FinancialReport> financialReportList = financialReportRepository.findAllByBaseReportData_Year(year);
+        Map<Integer, BigDecimal> totalRevenueChart = new HashMap<>();
+        Map<Integer, Integer> totalContractsChart = new HashMap<>();
+        Map<Integer, BigDecimal> agentSalaryChart = new HashMap<>();
+        Map<String, Map<Integer, BigDecimal>> targetRevenueChart = new HashMap<>();
+
+        for (FinancialReport financialReportItem : financialReportList) {
+            int monthI = financialReportItem.getBaseReportData().getMonth();
+
+            totalRevenueChart.put(monthI, financialReportItem.getTotalRevenue());
+            totalContractsChart.put(monthI, financialReportItem.getContractCount());
+            agentSalaryChart.put(monthI, financialReportItem.getTotalSalary());
+
+            for (RankedRevenueItem city : financialReportItem.getRevenueCities()) {
+                String cityName = locationService.getLocationName(city.getId(), Constants.LocationEnum.CITY);
+                if (!targetRevenueChart.containsKey(cityName)) {
+                    targetRevenueChart.put(cityName, new HashMap<>());
+                }
+                targetRevenueChart.get(cityName).put(monthI, city.getRevenue());
+            }
+
+            for (RankedRevenueItem district : financialReportItem.getRevenueDistricts()) {
+                String districtName = locationService.getLocationName(district.getId(), Constants.LocationEnum.DISTRICT);
+                if (!targetRevenueChart.containsKey(districtName)) {
+                    targetRevenueChart.put(districtName, new HashMap<>());
+                }
+                targetRevenueChart.get(districtName).put(monthI, district.getRevenue());
+            }
+
+            for (RankedRevenueItem ward :  financialReportItem.getRevenueWards()) {
+                String wardName = locationService.getLocationName(ward.getId(), Constants.LocationEnum.WARD);
+                if (!targetRevenueChart.containsKey(wardName)) {
+                    targetRevenueChart.put(wardName, new HashMap<>());
+                }
+                targetRevenueChart.get(wardName).put(monthI, ward.getRevenue());
+            }
+
+            for (RankedRevenueItem propertyType :  financialReportItem.getRevenuePropertyTypes()) {
+                String propertyTypeName = propertyService.getPropertyTypeName(propertyType.getId());
+                if (!targetRevenueChart.containsKey(propertyTypeName)) {
+                    targetRevenueChart.put(propertyTypeName, new HashMap<>());
+                }
+                targetRevenueChart.get(propertyTypeName).put(monthI, propertyType.getRevenue());
+            }
+        }
+
+        financialStats.setTotalRevenueChart(totalRevenueChart);
+        financialStats.setTotalContractsChart(totalContractsChart);
+        financialStats.setAgentSalaryChart(agentSalaryChart);
+        financialStats.setTargetRevenueChart(targetRevenueChart);
+
+        return financialStats;
     }
 }

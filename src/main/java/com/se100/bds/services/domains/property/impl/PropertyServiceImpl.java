@@ -661,6 +661,16 @@ public class PropertyServiceImpl implements PropertyService {
         return propertyCards;
     }
 
+    @Override
+    public List<UUID> getAllAvailablePropertyTypeIds() {
+        return propertyTypeRepository.getAllIds();
+    }
+
+    @Override
+    public String getPropertyTypeName(UUID propertyTypeId) {
+        return propertyTypeRepository.getPropertyTypeNameById(propertyTypeId);
+    }
+
     private boolean hasPriceChanged(BigDecimal currentPrice, BigDecimal newPrice) {
         return bigDecimalChanged(currentPrice, newPrice);
     }
