@@ -1527,4 +1527,12 @@ public class UserServiceImpl implements UserService {
                 List.of(Constants.StatusProfileEnum.ACTIVE)
         );
     }
+
+    @Override
+    public Integer countNewUsersByRoleAndMonthAndYear(Constants.RoleEnum roleEnum, int month, int year) {
+        if (month == 0 || year == 0)
+            return userRepository.countByRole(roleEnum);
+        return userRepository.countByRoleAndCreatedAtYearAndMonth(roleEnum, year, month);
+    }
+
 }
