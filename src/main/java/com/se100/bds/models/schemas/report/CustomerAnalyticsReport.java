@@ -1,13 +1,10 @@
 package com.se100.bds.models.schemas.report;
 
-import com.se100.bds.models.schemas.ranking.IndividualCustomerPotentialAll;
-import com.se100.bds.models.schemas.ranking.IndividualCustomerPotentialMonth;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Document(collection = "customer_analytics_reports")
 @Builder
@@ -36,16 +33,4 @@ public class CustomerAnalyticsReport extends AbstractBaseMongoReport {
 
     @Field("avg_rating")
     private BigDecimal avgRating;
-
-    @Field("total_rates_current_month")
-    private Integer totalRatesCurrentMonth;
-
-    @Field("avg_rating_current_month")
-    private BigDecimal avgRatingCurrentMonth;
-
-    @Field("list_potential_month")
-    private List<IndividualCustomerPotentialMonth> listPotentialMonth;
-
-    @Field("list_potential_all")
-    private List<IndividualCustomerPotentialAll> listPotentialAll;
 }

@@ -7,6 +7,7 @@ import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -156,6 +157,7 @@ public class RankingServiceImpl implements RankingService {
     }
 
     @Override
+    @Async
     public void agentAction(UUID agentId, Constants.AgentActionEnum actionType, BigDecimal amount) {
         int month = LocalDateTime.now().getMonthValue();
         int year = LocalDateTime.now().getYear();
@@ -240,6 +242,7 @@ public class RankingServiceImpl implements RankingService {
     }
 
     @Override
+    @Async
     public void customerAction(UUID customerId, Constants.CustomerActionEnum actionType, BigDecimal amount) {
         int month = LocalDateTime.now().getMonthValue();
         int year = LocalDateTime.now().getYear();
@@ -297,6 +300,7 @@ public class RankingServiceImpl implements RankingService {
     }
 
     @Override
+    @Async
     public void propertyOwnerAction(UUID ownerId, Constants.PropertyOwnerActionEnum actionType, BigDecimal amount) {
         int month = LocalDateTime.now().getMonthValue();
         int year = LocalDateTime.now().getYear();

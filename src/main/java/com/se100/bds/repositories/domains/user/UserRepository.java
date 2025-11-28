@@ -108,4 +108,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     );
 
     List<User> findAllByRoleAndStatusIn(Constants.RoleEnum role, Collection<Constants.StatusProfileEnum> statuses);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role AND YEAR(u.createdAt) = :year AND MONTH(u.createdAt) = :month")
+    Integer countByRoleAndCreatedAtYearAndMonth(@Param("role") Constants.RoleEnum role, @Param("year") int year, @Param("month") int month);
+
+    Integer countByRole(Constants.RoleEnum role);
 }
