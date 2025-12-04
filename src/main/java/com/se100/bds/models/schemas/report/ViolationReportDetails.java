@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Document(collection = "violation_report_details")
 @Builder
@@ -29,5 +31,5 @@ public class ViolationReportDetails extends AbstractBaseMongoReport {
     private Integer propertiesRemoved;
 
     @Field("violation_type_counts")
-    private List<RankedItem> violationTypeCounts;
+    private Map<UUID, Integer> violationTypeCounts;
 }
