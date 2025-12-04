@@ -10,14 +10,14 @@ import com.se100.bds.repositories.domains.mongo.ranking.IndividualSalesAgentPerf
 import com.se100.bds.repositories.domains.mongo.report.*;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualCustomerPotentialMonthRepository;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualPropertyOwnerContributionMonthRepository;
+import com.se100.bds.repositories.domains.violation.ViolationRepository;
 import com.se100.bds.services.domains.location.LocationService;
 import com.se100.bds.services.domains.property.PropertyService;
-import com.se100.bds.services.domains.ranking.RankingService;
-import com.se100.bds.services.domains.report.ReportService;
 import com.se100.bds.services.domains.report.ReportService;
 import com.se100.bds.services.domains.report.scheduler.FinancialReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.PropertyStatisticsReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.UserReportScheduler;
+import com.se100.bds.services.domains.report.scheduler.ViolationReportScheduler;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
@@ -35,11 +35,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
 
-    private final RankingService rankingService;
     private final UserService userService;
     private final UserReportScheduler userReportScheduler;
     private final PropertyStatisticsReportScheduler propertyStatisticsReportScheduler;
     private final FinancialReportScheduler financialReportScheduler;
+    private final ViolationReportScheduler violationReportScheduler;
     private final AgentPerformanceReportRepository agentPerformanceReportRepository;
     private final IndividualSalesAgentPerformanceMonthRepository individualSalesAgentPerformanceMonthRepository;
     private final FinancialReportRepository financialReportRepository;
@@ -52,6 +52,8 @@ public class ReportServiceImpl implements ReportService {
     private final LocationService locationService;
     private final PropertyService propertyService;
     private final PropertyStatisticsReportRepository propertyStatisticsReportRepository;
+    private final ViolationReportDetailsRepository violationReportDetailsRepository;
+    private final ViolationRepository violationRepository;
 
     @Override
     public AgentPerformanceStats getAgentPerformanceStats(int year) {
@@ -494,6 +496,91 @@ public class ReportServiceImpl implements ReportService {
 
         return propertyStats;
     }
+
+    @Override
+    public ViolationReportStats getViolationStats(int year) {
+        int month;
+        int currentYear = LocalDate.now().getYear();
+        int currentMonth = LocalDate.now().getMonthValue();
+
+        if (year > currentYear) return null;
+
+        if (currentYear == year) {
+            month = currentMonth;
+            // Generate to get the latest current month data
+            violationReportScheduler.initViolationReportData(month, year).join();
+        } else {
+            month = 12;
+        }
+
+        ViolationReportDetails violationReport = violationReportDetailsRepository
+                .findFirstByBaseReportData_MonthAndBaseReportData_YearOrderByCreatedAtDesc(month, year);
+
+        if (violationReport == null) {
+            log.warn("No ViolationReportDetails found for year {} and month {}", year, month);
+            return null;
+        }
+
+        ViolationReportStats violationStats = new ViolationReportStats();
+        violationStats.setTotalViolationReports(violationReport.getTotalViolationReports());
+        violationStats.setAvgResolutionTimeHours(violationReport.getAvgResolutionTimeHours() != null
+                ? violationReport.getAvgResolutionTimeHours().doubleValue() : 0.0);
+
+        // Get newThisMonth and unsolved count in parallel
+        java.time.LocalDateTime startOfMonth = java.time.LocalDateTime.of(year, month, 1, 0, 0, 0);
+        java.time.LocalDateTime startOfNextMonth = startOfMonth.plusMonths(1);
+
+        CompletableFuture<Integer> newThisMonthFuture = CompletableFuture.supplyAsync(() ->
+                violationRepository.countByCreatedAtBetween(startOfMonth, startOfNextMonth));
+
+        CompletableFuture<Integer> pendingCountFuture = CompletableFuture.supplyAsync(() ->
+                violationRepository.countByStatus(Constants.ViolationStatusEnum.PENDING));
+
+        CompletableFuture<Integer> underReviewCountFuture = CompletableFuture.supplyAsync(() ->
+                violationRepository.countByStatus(Constants.ViolationStatusEnum.UNDER_REVIEW));
+
+        // Get all reports for the year to build charts
+        List<ViolationReportDetails> violationReportList = violationReportDetailsRepository.findAllByBaseReportData_Year(year);
+
+        Map<Integer, Integer> totalViolationReportChart = new HashMap<>();
+        Map<Integer, Integer> accountsSuspendedChart = new HashMap<>();
+        Map<Integer, Integer> propertiesRemovedChart = new HashMap<>();
+        Map<String, Map<Integer, Long>> violationTrends = new HashMap<>();
+
+        for (ViolationReportDetails reportItem : violationReportList) {
+            int monthI = reportItem.getBaseReportData().getMonth();
+
+            totalViolationReportChart.put(monthI, reportItem.getTotalViolationReports() != null
+                    ? reportItem.getTotalViolationReports() : 0);
+            accountsSuspendedChart.put(monthI, reportItem.getAccountsSuspended() != null
+                    ? reportItem.getAccountsSuspended() : 0);
+            propertiesRemovedChart.put(monthI, reportItem.getPropertiesRemoved() != null
+                    ? reportItem.getPropertiesRemoved() : 0);
+
+            // Process violation type counts for trends (key is already violation type name)
+            if (reportItem.getViolationTypeCounts() != null) {
+                for (Map.Entry<String, Integer> entry : reportItem.getViolationTypeCounts().entrySet()) {
+                    String typeName = entry.getKey();
+                    violationTrends.computeIfAbsent(typeName, k -> new HashMap<>())
+                            .put(monthI, entry.getValue().longValue());
+                }
+            }
+        }
+
+        // Wait for all counts to complete
+        CompletableFuture.allOf(newThisMonthFuture, pendingCountFuture, underReviewCountFuture).join();
+
+        violationStats.setNewThisMonth(newThisMonthFuture.join());
+        violationStats.setUnsolved(pendingCountFuture.join() + underReviewCountFuture.join());
+
+        violationStats.setTotalViolationReportChart(totalViolationReportChart);
+        violationStats.setAccountsSuspendedChart(accountsSuspendedChart);
+        violationStats.setPropertiesRemovedChart(propertiesRemovedChart);
+        violationStats.setViolationTrends(violationTrends);
+
+        return violationStats;
+    }
+
 
     @Override
     public DashboardTopStats getDashboardTopStats() {

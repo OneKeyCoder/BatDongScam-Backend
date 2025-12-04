@@ -8,6 +8,7 @@ import com.se100.bds.dtos.responses.statisticreport.CustomerStats;
 import com.se100.bds.dtos.responses.statisticreport.FinancialStats;
 import com.se100.bds.dtos.responses.statisticreport.PropertyOwnerStats;
 import com.se100.bds.dtos.responses.statisticreport.PropertyStats;
+import com.se100.bds.dtos.responses.statisticreport.ViolationReportStats;
 import com.se100.bds.services.domains.report.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -103,6 +104,20 @@ public class StatisticReportController extends AbstractBaseController {
             @PathVariable int year) {
         PropertyStats stats = reportService.getPropertyStats(year);
         return responseFactory.successSingle(stats, "Property stats retrieved successfully");
+    }
+
+    @GetMapping("/violation/{year}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get violation stats for a year", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved violation stats"),
+        @ApiResponse(responseCode = "404", description = "Year not found")
+    })
+    public ResponseEntity<SingleResponse<ViolationReportStats>> getViolationStats(
+            @Parameter(description = "Year for the stats", required = true)
+            @PathVariable int year) {
+        ViolationReportStats stats = reportService.getViolationStats(year);
+        return responseFactory.successSingle(stats, "Violation stats retrieved successfully");
     }
 
     // ===== ADMIN DASHBOARD ENDPOINTS =====

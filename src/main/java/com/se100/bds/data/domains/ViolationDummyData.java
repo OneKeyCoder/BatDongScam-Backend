@@ -9,6 +9,7 @@ import com.se100.bds.repositories.domains.mongo.report.ViolationReportDetailsRep
 import com.se100.bds.repositories.domains.property.PropertyRepository;
 import com.se100.bds.repositories.domains.user.UserRepository;
 import com.se100.bds.repositories.domains.violation.ViolationRepository;
+import com.se100.bds.services.domains.report.scheduler.ViolationReportScheduler;
 import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,11 +33,37 @@ public class ViolationDummyData {
     private final ViolationReportDetailsRepository violationReportDetailsRepository;
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
+    private final ViolationReportScheduler violationReportScheduler;
     private final Random random = new Random();
 
     public void createDummy() {
         createDummyViolations();
         createDummyViolationReportDetails();
+        initViolationReportData();
+    }
+
+    private void initViolationReportData() {
+        log.info("Initializing violation report data using scheduler...");
+
+        int currentMonth = LocalDateTime.now().getMonthValue();
+        int currentYear = LocalDateTime.now().getYear();
+
+        int startYear = 2024;
+        int startMonth = 1;
+        int year = startYear;
+        int month = startMonth;
+
+        while (year < currentYear || (year == currentYear && month <= currentMonth)) {
+            violationReportScheduler.initViolationReportData(month, year).join();
+
+            month++;
+            if (month > 12) {
+                month = 1;
+                year++;
+            }
+        }
+
+        log.info("Done initializing violation report data");
     }
 
     private void createDummyViolations() {
@@ -204,15 +231,13 @@ public class ViolationDummyData {
             int accountsSuspended = random.nextInt(8); // 0-7 accounts suspended
             int propertiesRemoved = random.nextInt(12); // 0-11 properties removed
 
-            // Generate violation type counts with Map
-            Map<UUID, Integer> violationTypeCounts = new HashMap<>();
+            // Generate violation type counts with Map (key is violation type name)
+            Map<String, Integer> violationTypeCounts = new HashMap<>();
             for (Constants.ViolationTypeEnum violationType : violationTypes) {
                 // Generate random count for each violation type (0-15)
                 int count = random.nextInt(16);
                 if (count > 0) { // Only add if there are violations of this type
-                    // We use a deterministic UUID based on violation type name for consistency
-                    UUID id = UUID.nameUUIDFromBytes(violationType.name().getBytes());
-                    violationTypeCounts.put(id, count);
+                    violationTypeCounts.put(violationType.getValue(), count);
                 }
             }
 
@@ -227,7 +252,6 @@ public class ViolationDummyData {
             // Create violation report details
             ViolationReportDetails reportDetails = ViolationReportDetails.builder()
                     .totalViolationReports(totalViolations)
-                    .totalViolationReportsCurrentMonth(currentMonthViolations)
                     .avgResolutionTimeHours(avgResolutionTime)
                     .accountsSuspended(accountsSuspended)
                     .propertiesRemoved(propertiesRemoved)

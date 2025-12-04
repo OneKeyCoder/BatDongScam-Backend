@@ -9,6 +9,7 @@ public interface ReportService {
     PropertyOwnerStats getPropertyOwnerStats(int year);
     FinancialStats getFinancialStats(int year);
     PropertyStats getPropertyStats(int year);
+    ViolationReportStats getViolationStats(int year);
 
     /// ADMIN DASHBOARD
     DashboardTopStats getDashboardTopStats();
