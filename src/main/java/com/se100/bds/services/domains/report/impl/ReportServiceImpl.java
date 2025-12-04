@@ -1,5 +1,6 @@
 package com.se100.bds.services.domains.report.impl;
 
+import com.se100.bds.dtos.responses.admindashboard.*;
 import com.se100.bds.dtos.responses.statisticreport.*;
 import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceMonth;
 import com.se100.bds.models.schemas.report.*;
@@ -13,6 +14,8 @@ import com.se100.bds.services.domains.location.LocationService;
 import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.report.ReportService;
+import com.se100.bds.services.domains.report.ReportService;
+import com.se100.bds.services.domains.report.scheduler.FinancialReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.PropertyStatisticsReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.UserReportScheduler;
 import com.se100.bds.services.domains.user.UserService;
@@ -34,8 +37,9 @@ public class ReportServiceImpl implements ReportService {
 
     private final RankingService rankingService;
     private final UserService userService;
-    private final UserReportScheduler userReportScheduler; // God forgive me
+    private final UserReportScheduler userReportScheduler;
     private final PropertyStatisticsReportScheduler propertyStatisticsReportScheduler;
+    private final FinancialReportScheduler financialReportScheduler;
     private final AgentPerformanceReportRepository agentPerformanceReportRepository;
     private final IndividualSalesAgentPerformanceMonthRepository individualSalesAgentPerformanceMonthRepository;
     private final FinancialReportRepository financialReportRepository;
@@ -489,5 +493,332 @@ public class ReportServiceImpl implements ReportService {
         propertyStats.setFavoriteTargets(favoriteTargets);
 
         return propertyStats;
+    }
+
+    @Override
+    public DashboardTopStats getDashboardTopStats() {
+        int currentMonth = LocalDate.now().getMonthValue();
+        int currentYear = LocalDate.now().getYear();
+
+        // Run init schedulers in parallel for latest data
+        CompletableFuture<Void> propertyStatsFuture = propertyStatisticsReportScheduler.initPropertyStatisticsReportData(currentMonth, currentYear);
+        CompletableFuture<Void> financialFuture = financialReportScheduler.initFinancialReportData(currentMonth, currentYear);
+        CompletableFuture<Void> customerFuture = userReportScheduler.generateCustomerAnalyticsReport(currentMonth, currentYear);
+        CompletableFuture<Void> agentFuture = userReportScheduler.generateAgentPerformanceReport(currentMonth, currentYear);
+        CompletableFuture<Void> ownerFuture = userReportScheduler.generatePropertyOwnerContributionReport(currentMonth, currentYear);
+
+        // Wait for property stats and financial to complete first (needed for totalProperties and totalContracts)
+        CompletableFuture.allOf(propertyStatsFuture, financialFuture).join();
+
+        // Get totalProperties from property statistics report
+        PropertyStatisticsReport propertyReport = propertyStatisticsReportRepository
+                .findFirstByBaseReportData_MonthAndBaseReportData_YearOrderByCreatedAtDesc(currentMonth, currentYear);
+        Integer totalProperties = propertyReport != null ? propertyReport.getTotalActiveProperties() : 0;
+
+        // Get totalContracts and calculate monthRevenue from financial report
+        FinancialReport currentFinancialReport = financialReportRepository
+                .findByBaseReportData_MonthAndBaseReportData_Year(currentMonth, currentYear);
+        Integer totalContracts = currentFinancialReport != null ? currentFinancialReport.getContractCount() : 0;
+
+        // Calculate monthRevenue = current month revenue - previous month revenue
+        BigDecimal monthRevenue = BigDecimal.ZERO;
+        if (currentFinancialReport != null) {
+            BigDecimal currentRevenue = currentFinancialReport.getTotalRevenue() != null
+                    ? currentFinancialReport.getTotalRevenue() : BigDecimal.ZERO;
+
+            FinancialReport previousFinancialReport;
+            if (currentMonth == 1) {
+                previousFinancialReport = financialReportRepository
+                        .findByBaseReportData_MonthAndBaseReportData_Year(12, currentYear - 1);
+            } else {
+                previousFinancialReport = financialReportRepository
+                        .findByBaseReportData_MonthAndBaseReportData_Year(currentMonth - 1, currentYear);
+            }
+
+            BigDecimal previousRevenue = (previousFinancialReport != null && previousFinancialReport.getTotalRevenue() != null)
+                    ? previousFinancialReport.getTotalRevenue() : BigDecimal.ZERO;
+
+            monthRevenue = currentRevenue.subtract(previousRevenue);
+        }
+
+        // Wait for user reports to complete
+        CompletableFuture.allOf(customerFuture, agentFuture, ownerFuture).join();
+
+        // Get totalUsers from all user reports
+        CustomerAnalyticsReport customerReport = customerAnalyticsReportRepository
+                .findByBaseReportData_MonthAndBaseReportData_Year(currentMonth, currentYear);
+        AgentPerformanceReport agentReport = agentPerformanceReportRepository
+                .findByBaseReportData_MonthAndBaseReportData_Year(currentMonth, currentYear);
+        PropertyOwnerContributionReport ownerReport = propertyOwnerContributionReportRepository
+                .findByBaseReportData_MonthAndBaseReportData_Year(currentMonth, currentYear);
+
+        int totalCustomers = customerReport != null && customerReport.getTotalCustomers() != null ? customerReport.getTotalCustomers() : 0;
+        int totalAgents = agentReport != null && agentReport.getTotalAgents() != null ? agentReport.getTotalAgents() : 0;
+        int totalOwners = ownerReport != null && ownerReport.getTotalOwners() != null ? ownerReport.getTotalOwners() : 0;
+        Integer totalUsers = totalCustomers + totalAgents + totalOwners;
+
+        // Get customerSatisfaction from customer analytics report
+        Double customerSatisfaction = customerReport != null && customerReport.getCustomerSatisfactionScore() != null
+                ? customerReport.getCustomerSatisfactionScore().doubleValue() : 0.0;
+
+        return DashboardTopStats.builder()
+                .totalProperties(totalProperties)
+                .totalContracts(totalContracts)
+                .monthRevenue(monthRevenue)
+                .totalUsers(totalUsers)
+                .customerStatisfaction(customerSatisfaction)
+                .build();
+    }
+
+    @Override
+    public DashboardRevenueAndContracts getDashboardRevenueAndContracts(int year) {
+        int currentYear = LocalDate.now().getYear();
+        int currentMonth = LocalDate.now().getMonthValue();
+
+        if (year > currentYear) return null;
+
+        // If current year, init to get latest data
+        if (year == currentYear) {
+            financialReportScheduler.initFinancialReportData(currentMonth, year).join();
+        }
+
+        List<FinancialReport> financialReports = financialReportRepository.findAllByBaseReportData_Year(year);
+
+        Map<Integer, BigDecimal> revenue = new HashMap<>();
+        Map<Integer, Integer> contracts = new HashMap<>();
+
+        for (FinancialReport report : financialReports) {
+            int month = report.getBaseReportData().getMonth();
+            revenue.put(month, report.getTotalRevenue() != null ? report.getTotalRevenue() : BigDecimal.ZERO);
+            contracts.put(month, report.getContractCount() != null ? report.getContractCount() : 0);
+        }
+
+        return DashboardRevenueAndContracts.builder()
+                .revenue(revenue)
+                .contracts(contracts)
+                .build();
+    }
+
+    @Override
+    public DashboardTotalProperties getDashboardTotalProperties(int year) {
+        int currentYear = LocalDate.now().getYear();
+        int currentMonth = LocalDate.now().getMonthValue();
+
+        if (year > currentYear) return null;
+
+        // If current year, init to get latest data
+        if (year == currentYear) {
+            propertyStatisticsReportScheduler.initPropertyStatisticsReportData(currentMonth, year).join();
+        }
+
+        List<PropertyStatisticsReport> propertyReports = propertyStatisticsReportRepository.findAllByBaseReportData_Year(year);
+
+        Map<Integer, Integer> totalProperties = new HashMap<>();
+
+        for (PropertyStatisticsReport report : propertyReports) {
+            int month = report.getBaseReportData().getMonth();
+            totalProperties.put(month, report.getTotalActiveProperties() != null ? report.getTotalActiveProperties() : 0);
+        }
+
+        return DashboardTotalProperties.builder()
+                .totalProperties(totalProperties)
+                .build();
+    }
+
+    @Override
+    public DashboardPropertyDistribution getDashboardPropertyDistribution(int year) {
+        int currentYear = LocalDate.now().getYear();
+
+        if (year > currentYear) return null;
+
+        // Get all property type IDs
+        List<UUID> propertyTypeIds = propertyService.getAllAvailablePropertyTypeIds();
+
+        if (propertyTypeIds == null || propertyTypeIds.isEmpty()) {
+            return DashboardPropertyDistribution.builder()
+                    .propertyTypes(new ArrayList<>())
+                    .build();
+        }
+
+        // Get count for each property type in parallel
+        List<DashboardPropertyDistribution.PropertyTypeDistribution> propertyTypes = new ArrayList<>();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        // First, get all counts in parallel
+        Map<UUID, Integer> typeCountMap = new HashMap<>();
+        List<CompletableFuture<Void>> countFutures = new ArrayList<>();
+
+        for (UUID typeId : propertyTypeIds) {
+            countFutures.add(CompletableFuture.supplyAsync(() ->
+                propertyService.countPropertiesByPropertyTypeId(typeId)
+            ).thenAccept(count -> {
+                synchronized (typeCountMap) {
+                    typeCountMap.put(typeId, count);
+                }
+            }));
+        }
+
+        CompletableFuture.allOf(countFutures.toArray(new CompletableFuture[0])).join();
+
+        // Calculate grand total
+        int grandTotal = typeCountMap.values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+
+        final int totalCount = grandTotal > 0 ? grandTotal : 1; // Avoid division by zero
+
+        // Now get names and build result in parallel
+        for (Map.Entry<UUID, Integer> entry : typeCountMap.entrySet()) {
+            UUID typeId = entry.getKey();
+            Integer count = entry.getValue();
+            double percentage = (count * 100.0) / totalCount;
+
+            futures.add(CompletableFuture.supplyAsync(() ->
+                    propertyService.getPropertyTypeName(typeId)
+            ).thenAccept(typeName -> {
+                DashboardPropertyDistribution.PropertyTypeDistribution item =
+                        new DashboardPropertyDistribution.PropertyTypeDistribution();
+                item.setTypeName(typeName);
+                item.setCount(count);
+                item.setPercentage(percentage);
+
+                synchronized (propertyTypes) {
+                    propertyTypes.add(item);
+                }
+            }));
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        return DashboardPropertyDistribution.builder()
+                .propertyTypes(propertyTypes)
+                .build();
+    }
+
+    @Override
+    public DashboardAgentRanking getDashboardAgentRanking(int month, int year) {
+        int currentYear = LocalDate.now().getYear();
+
+        if (year > currentYear) return null;
+
+        // Adjust month if past year
+        if (year < currentYear) {
+            month = 12;
+        }
+
+        // Get all agent performance records for this month/year
+        List<IndividualSalesAgentPerformanceMonth> agentPerformances = individualSalesAgentPerformanceMonthRepository
+                .findAllByMonthAndYear(month, year);
+
+        // Sort by ranking position and take top 5
+        List<IndividualSalesAgentPerformanceMonth> top5Agents = agentPerformances.stream()
+                .filter(a -> a.getRankingPosition() != null)
+                .sorted(Comparator.comparingInt(IndividualSalesAgentPerformanceMonth::getRankingPosition))
+                .limit(5)
+                .toList();
+
+        List<DashboardAgentRanking.AgentItem> agentItems = new ArrayList<>();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (IndividualSalesAgentPerformanceMonth agent : top5Agents) {
+            futures.add(CompletableFuture.supplyAsync(() -> {
+                try {
+                    return userService.getUserById(agent.getAgentId());
+                } catch (Exception e) {
+                    log.warn("Failed to get user info for agent {}: {}", agent.getAgentId(), e.getMessage());
+                    return null;
+                }
+            }).thenAccept(userResponse -> {
+                DashboardAgentRanking.AgentItem item = new DashboardAgentRanking.AgentItem();
+                item.setRank(agent.getRankingPosition());
+                item.setTier(agent.getPerformanceTier() != null ? agent.getPerformanceTier().name() : null);
+                item.setRating(agent.getAvgRating() != null ? agent.getAvgRating().doubleValue() : 0.0);
+                item.setTotalAppointmentsCompleted(agent.getMonthAppointmentsCompleted() != null ? agent.getMonthAppointmentsCompleted() : 0);
+                item.setTotalContractsSigned(agent.getMonthContracts() != null ? agent.getMonthContracts() : 0);
+
+                if (userResponse != null) {
+                    item.setFirstName(userResponse.getFirstName() != null ? userResponse.getFirstName() : "Unknown");
+                    item.setLastName(userResponse.getLastName() != null ? userResponse.getLastName() : "Agent");
+                } else {
+                    item.setFirstName("Unknown");
+                    item.setLastName("Agent");
+                }
+
+                synchronized (agentItems) {
+                    agentItems.add(item);
+                }
+            }));
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // Sort by rank after parallel processing
+        agentItems.sort(Comparator.comparingInt(DashboardAgentRanking.AgentItem::getRank));
+
+        return DashboardAgentRanking.builder()
+                .agents(agentItems)
+                .build();
+    }
+
+    @Override
+    public DashboardCustomerRanking getDashboardCustomerRanking(int month, int year) {
+        int currentYear = LocalDate.now().getYear();
+
+        if (year > currentYear) return null;
+
+        // Adjust month if past year
+        if (year < currentYear) {
+            month = 12;
+        }
+
+        // Get all customer potential records for this month/year
+        List<IndividualCustomerPotentialMonth> customerPotentials = individualCustomerPotentialMonthRepository
+                .findAllByMonthAndYear(month, year);
+
+        // Sort by lead position and take top 5
+        List<IndividualCustomerPotentialMonth> top5Customers = customerPotentials.stream()
+                .filter(c -> c.getLeadPosition() != null)
+                .sorted(Comparator.comparingInt(IndividualCustomerPotentialMonth::getLeadPosition))
+                .limit(5)
+                .toList();
+
+        List<DashboardCustomerRanking.CustomerItem> customerItems = new ArrayList<>();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (IndividualCustomerPotentialMonth customer : top5Customers) {
+            futures.add(CompletableFuture.supplyAsync(() -> {
+                try {
+                    return userService.getUserById(customer.getCustomerId());
+                } catch (Exception e) {
+                    log.warn("Failed to get user info for customer {}: {}", customer.getCustomerId(), e.getMessage());
+                    return null;
+                }
+            }).thenAccept(userResponse -> {
+                DashboardCustomerRanking.CustomerItem item = new DashboardCustomerRanking.CustomerItem();
+                item.setRank(customer.getLeadPosition());
+                item.setTier(customer.getCustomerTier() != null ? customer.getCustomerTier().name() : null);
+
+                if (userResponse != null) {
+                    item.setFirstName(userResponse.getFirstName() != null ? userResponse.getFirstName() : "Unknown");
+                    item.setLastName(userResponse.getLastName() != null ? userResponse.getLastName() : "Customer");
+                } else {
+                    item.setFirstName("Unknown");
+                    item.setLastName("Customer");
+                }
+
+                synchronized (customerItems) {
+                    customerItems.add(item);
+                }
+            }));
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // Sort by rank after parallel processing
+        customerItems.sort(Comparator.comparingInt(DashboardCustomerRanking.CustomerItem::getRank));
+
+        return DashboardCustomerRanking.builder()
+                .customers(customerItems)
+                .build();
     }
 }
