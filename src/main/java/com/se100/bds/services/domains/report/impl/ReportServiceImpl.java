@@ -1,25 +1,19 @@
 package com.se100.bds.services.domains.report.impl;
 
-import com.se100.bds.dtos.responses.statisticreport.AgentPerformanceStats;
-import com.se100.bds.dtos.responses.statisticreport.CustomerStats;
-import com.se100.bds.dtos.responses.statisticreport.FinancialStats;
-import com.se100.bds.dtos.responses.statisticreport.PropertyOwnerStats;
+import com.se100.bds.dtos.responses.statisticreport.*;
 import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceMonth;
 import com.se100.bds.models.schemas.report.*;
 import com.se100.bds.models.schemas.ranking.IndividualCustomerPotentialMonth;
 import com.se100.bds.models.schemas.ranking.IndividualPropertyOwnerContributionMonth;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualSalesAgentPerformanceMonthRepository;
-import com.se100.bds.repositories.domains.mongo.report.AgentPerformanceReportRepository;
+import com.se100.bds.repositories.domains.mongo.report.*;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualCustomerPotentialMonthRepository;
 import com.se100.bds.repositories.domains.mongo.ranking.IndividualPropertyOwnerContributionMonthRepository;
-import com.se100.bds.repositories.domains.mongo.report.CustomerAnalyticsReportRepository;
-import com.se100.bds.repositories.domains.mongo.report.FinancialReportRepository;
-import com.se100.bds.repositories.domains.mongo.report.PropertyOwnerContributionReportRepository;
 import com.se100.bds.services.domains.location.LocationService;
 import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.report.ReportService;
-import com.se100.bds.services.domains.report.scheduler.FinancialReportScheduler;
+import com.se100.bds.services.domains.report.scheduler.PropertyStatisticsReportScheduler;
 import com.se100.bds.services.domains.report.scheduler.UserReportScheduler;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
@@ -30,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +35,7 @@ public class ReportServiceImpl implements ReportService {
     private final RankingService rankingService;
     private final UserService userService;
     private final UserReportScheduler userReportScheduler; // God forgive me
+    private final PropertyStatisticsReportScheduler propertyStatisticsReportScheduler;
     private final AgentPerformanceReportRepository agentPerformanceReportRepository;
     private final IndividualSalesAgentPerformanceMonthRepository individualSalesAgentPerformanceMonthRepository;
     private final FinancialReportRepository financialReportRepository;
@@ -51,6 +47,7 @@ public class ReportServiceImpl implements ReportService {
     private final IndividualPropertyOwnerContributionMonthRepository individualPropertyOwnerContributionMonthRepository;
     private final LocationService locationService;
     private final PropertyService propertyService;
+    private final PropertyStatisticsReportRepository propertyStatisticsReportRepository;
 
     @Override
     public AgentPerformanceStats getAgentPerformanceStats(int year) {
@@ -236,6 +233,8 @@ public class ReportServiceImpl implements ReportService {
         Map<Integer, BigDecimal> agentSalaryChart = new HashMap<>();
         Map<String, Map<Integer, BigDecimal>> targetRevenueChart = new HashMap<>();
 
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (FinancialReport financialReportItem : financialReportList) {
             int monthI = financialReportItem.getBaseReportData().getMonth();
 
@@ -244,37 +243,59 @@ public class ReportServiceImpl implements ReportService {
             agentSalaryChart.put(monthI, financialReportItem.getTotalSalary());
 
             for (RankedRevenueItem city : financialReportItem.getRevenueCities()) {
-                String cityName = locationService.getLocationName(city.getId(), Constants.LocationEnum.CITY);
-                if (!targetRevenueChart.containsKey(cityName)) {
-                    targetRevenueChart.put(cityName, new HashMap<>());
-                }
-                targetRevenueChart.get(cityName).put(monthI, city.getRevenue());
+                futures.add(CompletableFuture.supplyAsync(() ->
+                    locationService.getLocationName(city.getId(), Constants.LocationEnum.CITY)
+                ).thenAccept(cityName -> {
+                    synchronized (targetRevenueChart) {
+                        if (!targetRevenueChart.containsKey(cityName)) {
+                            targetRevenueChart.put(cityName, new HashMap<>());
+                        }
+                        targetRevenueChart.get(cityName).put(monthI, city.getRevenue());
+                    }
+                }));
             }
 
             for (RankedRevenueItem district : financialReportItem.getRevenueDistricts()) {
-                String districtName = locationService.getLocationName(district.getId(), Constants.LocationEnum.DISTRICT);
-                if (!targetRevenueChart.containsKey(districtName)) {
-                    targetRevenueChart.put(districtName, new HashMap<>());
-                }
-                targetRevenueChart.get(districtName).put(monthI, district.getRevenue());
+                futures.add(CompletableFuture.supplyAsync(() ->
+                    locationService.getLocationName(district.getId(), Constants.LocationEnum.DISTRICT)
+                ).thenAccept(districtName -> {
+                    synchronized (targetRevenueChart) {
+                        if (!targetRevenueChart.containsKey(districtName)) {
+                            targetRevenueChart.put(districtName, new HashMap<>());
+                        }
+                        targetRevenueChart.get(districtName).put(monthI, district.getRevenue());
+                    }
+                }));
             }
 
             for (RankedRevenueItem ward :  financialReportItem.getRevenueWards()) {
-                String wardName = locationService.getLocationName(ward.getId(), Constants.LocationEnum.WARD);
-                if (!targetRevenueChart.containsKey(wardName)) {
-                    targetRevenueChart.put(wardName, new HashMap<>());
-                }
-                targetRevenueChart.get(wardName).put(monthI, ward.getRevenue());
+                futures.add(CompletableFuture.supplyAsync(() ->
+                    locationService.getLocationName(ward.getId(), Constants.LocationEnum.WARD)
+                ).thenAccept(wardName -> {
+                    synchronized (targetRevenueChart) {
+                        if (!targetRevenueChart.containsKey(wardName)) {
+                            targetRevenueChart.put(wardName, new HashMap<>());
+                        }
+                        targetRevenueChart.get(wardName).put(monthI, ward.getRevenue());
+                    }
+                }));
             }
 
             for (RankedRevenueItem propertyType :  financialReportItem.getRevenuePropertyTypes()) {
-                String propertyTypeName = propertyService.getPropertyTypeName(propertyType.getId());
-                if (!targetRevenueChart.containsKey(propertyTypeName)) {
-                    targetRevenueChart.put(propertyTypeName, new HashMap<>());
-                }
-                targetRevenueChart.get(propertyTypeName).put(monthI, propertyType.getRevenue());
+                futures.add(CompletableFuture.supplyAsync(() ->
+                    propertyService.getPropertyTypeName(propertyType.getId())
+                ).thenAccept(propertyTypeName -> {
+                    synchronized (targetRevenueChart) {
+                        if (!targetRevenueChart.containsKey(propertyTypeName)) {
+                            targetRevenueChart.put(propertyTypeName, new HashMap<>());
+                        }
+                        targetRevenueChart.get(propertyTypeName).put(monthI, propertyType.getRevenue());
+                    }
+                }));
             }
         }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         financialStats.setTotalRevenueChart(totalRevenueChart);
         financialStats.setTotalContractsChart(totalContractsChart);
@@ -282,5 +303,191 @@ public class ReportServiceImpl implements ReportService {
         financialStats.setTargetRevenueChart(targetRevenueChart);
 
         return financialStats;
+    }
+
+    @Override
+    public PropertyStats getPropertyStats(int year) {
+        int month;
+        int currentYear = LocalDate.now().getYear();
+        if (year > currentYear) return null;
+        if (currentYear == year) {
+            month = LocalDate.now().getMonthValue();
+            // Generate to get the latest current month data
+            // Use join to await them
+            propertyStatisticsReportScheduler.initPropertyStatisticsReportData(month, year).join();
+        } else
+            month = 12;
+
+        PropertyStatisticsReport propertyStatisticsReport = propertyStatisticsReportRepository.findFirstByBaseReportData_MonthAndBaseReportData_YearOrderByCreatedAtDesc(
+                month, year
+        );
+
+        if (propertyStatisticsReport == null) {
+            log.warn("No PropertyStatisticsReport found for year {} and month {}", year, month);
+            return null;
+        }
+
+        PropertyStats propertyStats = new PropertyStats();
+        propertyStats.setActiveProperties(propertyStatisticsReport.getTotalActiveProperties());
+        propertyStats.setNewProperties(propertyStats.getActiveProperties() - propertyStatisticsReport.getTotalActiveProperties());
+        propertyStats.setTotalSold(propertyStatisticsReport.getTotalSoldProperties());
+        propertyStats.setTotalRented(propertyStatisticsReport.getTotalRentedProperties());
+
+        List<PropertyStatisticsReport> propertyStatisticsReportList = propertyStatisticsReportRepository.findAllByBaseReportData_Year(year);
+        Map<Integer, Integer> totalProperties = new HashMap<>();
+        Map<Integer, Integer> totalSoldProperties = new HashMap<>();
+        Map<Integer, Integer> totalRentedProperties = new HashMap<>();
+        Map<String, Map<Integer, Long>> searchedTargets = new HashMap<>();
+        Map<String, Map<Integer, Long>> favoriteTargets = new HashMap<>();
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (PropertyStatisticsReport propertyStatisticsReportItem : propertyStatisticsReportList) {
+            int monthI = propertyStatisticsReportItem.getBaseReportData().getMonth();
+
+            totalProperties.put(monthI, propertyStatisticsReportItem.getTotalActiveProperties());
+            totalSoldProperties.put(monthI, propertyStatisticsReportItem.getTotalSoldProperties());
+            totalRentedProperties.put(monthI, propertyStatisticsReportItem.getTotalRentedProperties());
+
+            // Process searched targets
+            if (propertyStatisticsReportItem.getSearchedCities() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getSearchedCities().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        locationService.getLocationName(entry.getKey(), Constants.LocationEnum.CITY)
+                    ).thenAccept(cityName -> {
+                        synchronized (searchedTargets) {
+                            if (!searchedTargets.containsKey(cityName)) {
+                                searchedTargets.put(cityName, new HashMap<>());
+                            }
+                            searchedTargets.get(cityName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            if (propertyStatisticsReportItem.getSearchedDistricts() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getSearchedDistricts().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        locationService.getLocationName(entry.getKey(), Constants.LocationEnum.DISTRICT)
+                    ).thenAccept(districtName -> {
+                        synchronized (searchedTargets) {
+                            if (!searchedTargets.containsKey(districtName)) {
+                                searchedTargets.put(districtName, new HashMap<>());
+                            }
+                            searchedTargets.get(districtName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            if (propertyStatisticsReportItem.getSearchedWards() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getSearchedWards().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        locationService.getLocationName(entry.getKey(), Constants.LocationEnum.WARD)
+                    ).thenAccept(wardName -> {
+                        synchronized (searchedTargets) {
+                            if (!searchedTargets.containsKey(wardName)) {
+                                searchedTargets.put(wardName, new HashMap<>());
+                            }
+                            searchedTargets.get(wardName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            if (propertyStatisticsReportItem.getSearchedPropertyTypes() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getSearchedPropertyTypes().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        propertyService.getPropertyTypeName(entry.getKey())
+                    ).thenAccept(propertyTypeName -> {
+                        synchronized (searchedTargets) {
+                            if (!searchedTargets.containsKey(propertyTypeName)) {
+                                searchedTargets.put(propertyTypeName, new HashMap<>());
+                            }
+                            searchedTargets.get(propertyTypeName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            // Process favorite targets
+            if (propertyStatisticsReportItem.getFavoriteCities() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getFavoriteCities().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        locationService.getLocationName(entry.getKey(), Constants.LocationEnum.CITY)
+                    ).thenAccept(cityName -> {
+                        synchronized (favoriteTargets) {
+                            if (!favoriteTargets.containsKey(cityName)) {
+                                favoriteTargets.put(cityName, new HashMap<>());
+                            }
+                            favoriteTargets.get(cityName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            if (propertyStatisticsReportItem.getFavoriteDistricts() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getFavoriteDistricts().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        locationService.getLocationName(entry.getKey(), Constants.LocationEnum.DISTRICT)
+                    ).thenAccept(districtName -> {
+                        synchronized (favoriteTargets) {
+                            if (!favoriteTargets.containsKey(districtName)) {
+                                favoriteTargets.put(districtName, new HashMap<>());
+                            }
+                            favoriteTargets.get(districtName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            if (propertyStatisticsReportItem.getFavoriteWards() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getFavoriteWards().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        locationService.getLocationName(entry.getKey(), Constants.LocationEnum.WARD)
+                    ).thenAccept(wardName -> {
+                        synchronized (favoriteTargets) {
+                            if (!favoriteTargets.containsKey(wardName)) {
+                                favoriteTargets.put(wardName, new HashMap<>());
+                            }
+                            favoriteTargets.get(wardName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+
+            if (propertyStatisticsReportItem.getFavoritePropertyTypes() != null) {
+                for (Map.Entry<UUID, Integer> entry : propertyStatisticsReportItem.getFavoritePropertyTypes().entrySet()) {
+                    Long count = entry.getValue().longValue();
+                    futures.add(CompletableFuture.supplyAsync(() ->
+                        propertyService.getPropertyTypeName(entry.getKey())
+                    ).thenAccept(propertyTypeName -> {
+                        synchronized (favoriteTargets) {
+                            if (!favoriteTargets.containsKey(propertyTypeName)) {
+                                favoriteTargets.put(propertyTypeName, new HashMap<>());
+                            }
+                            favoriteTargets.get(propertyTypeName).put(monthI, count);
+                        }
+                    }));
+                }
+            }
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        propertyStats.setTotalProperties(totalProperties);
+        propertyStats.setTotalSoldProperties(totalSoldProperties);
+        propertyStats.setTotalRentedProperties(totalRentedProperties);
+        propertyStats.setSearchedTargets(searchedTargets);
+        propertyStats.setFavoriteTargets(favoriteTargets);
+
+        return propertyStats;
     }
 }

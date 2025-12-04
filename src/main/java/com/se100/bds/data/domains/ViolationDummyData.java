@@ -17,8 +17,11 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -201,24 +204,17 @@ public class ViolationDummyData {
             int accountsSuspended = random.nextInt(8); // 0-7 accounts suspended
             int propertiesRemoved = random.nextInt(12); // 0-11 properties removed
 
-            // Generate violation type counts with RankedItem
-            List<com.se100.bds.models.schemas.report.RankedItem> violationTypeCounts = new ArrayList<>();
+            // Generate violation type counts with Map
+            Map<UUID, Integer> violationTypeCounts = new HashMap<>();
             for (Constants.ViolationTypeEnum violationType : violationTypes) {
                 // Generate random count for each violation type (0-15)
                 int count = random.nextInt(16);
                 if (count > 0) { // Only add if there are violations of this type
                     // We use a deterministic UUID based on violation type name for consistency
-                    violationTypeCounts.add(
-                            com.se100.bds.models.schemas.report.RankedItem.builder()
-                                    .id(java.util.UUID.nameUUIDFromBytes(violationType.name().getBytes()))
-                                    .count(count)
-                                    .build()
-                    );
+                    UUID id = UUID.nameUUIDFromBytes(violationType.name().getBytes());
+                    violationTypeCounts.put(id, count);
                 }
             }
-
-            // Sort by count descending
-            violationTypeCounts.sort((a, b) -> b.getCount().compareTo(a.getCount()));
 
             // Create base report data
             com.se100.bds.models.schemas.report.BaseReportData baseReportData = new com.se100.bds.models.schemas.report.BaseReportData();
