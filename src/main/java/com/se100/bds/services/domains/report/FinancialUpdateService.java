@@ -9,6 +9,6 @@ public interface FinancialUpdateService {
     // Ex: Buy, Rent, Pay service fee
     void transaction(UUID propertyId, BigDecimal value, int month, int year);
 
-    // TODO: Pay back logic handling
+    // TODO: Pay money back logic handling
     // void payback
 }

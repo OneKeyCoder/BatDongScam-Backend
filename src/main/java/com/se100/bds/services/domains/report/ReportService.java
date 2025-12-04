@@ -1,6 +1,7 @@
 package com.se100.bds.services.domains.report;
 
 import com.se100.bds.dtos.responses.statisticreport.*;
+import com.se100.bds.dtos.responses.admindashboard.*;
 
 public interface ReportService {
     AgentPerformanceStats getAgentPerformanceStats(int year);
@@ -8,4 +9,12 @@ public interface ReportService {
     PropertyOwnerStats getPropertyOwnerStats(int year);
     FinancialStats getFinancialStats(int year);
     PropertyStats getPropertyStats(int year);
+
+    /// ADMIN DASHBOARD
+    DashboardTopStats getDashboardTopStats();
+    DashboardRevenueAndContracts getDashboardRevenueAndContracts(int year);
+    DashboardTotalProperties getDashboardTotalProperties(int year);
+    DashboardPropertyDistribution getDashboardPropertyDistribution(int year);
+    DashboardAgentRanking getDashboardAgentRanking(int month, int year);
+    DashboardCustomerRanking getDashboardCustomerRanking(int month, int year);
 }
