@@ -25,6 +25,7 @@ import com.se100.bds.repositories.domains.property.PropertyRepository;
 import com.se100.bds.repositories.domains.user.CustomerRepository;
 import com.se100.bds.repositories.domains.user.SaleAgentRepository;
 import com.se100.bds.services.domains.appointment.AppointmentService;
+import com.se100.bds.services.domains.notification.NotificationService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.user.UserService;
 import com.se100.bds.utils.Constants;
@@ -57,6 +58,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final UserService userService;
     private final RankingService rankingService;
     private final AppointmentMapper appointmentMapper;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -144,6 +146,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         // Track customer action for ranking
         rankingService.customerAction(customer.getId(), Constants.CustomerActionEnum.VIEWING_REQUESTED, null);
 
+        notificationService.notifyAppointmentBooked(saved);
+
         String confirmationMessage = assignedAgent != null
             ? "Appointment created and assigned to agent " + assignedAgent.getUser().getFirstName() + " " + assignedAgent.getUser().getLastName()
             : "Your viewing appointment has been booked. You will be notified when an agent confirms the appointment.";
@@ -199,6 +203,8 @@ public class AppointmentServiceImpl implements AppointmentService {
             rankingService.customerAction(appointment.getCustomer().getId(), Constants.CustomerActionEnum.VIEWING_CANCELLED, null);
         }
 
+        notificationService.notifyAppointmentCancelled(appointment, reason);
+
         return true;
     }
 
@@ -242,6 +248,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (appointment.getCustomer() != null) {
             rankingService.customerAction(appointment.getCustomer().getId(), Constants.CustomerActionEnum.VIEWING_ATTENDED, null);
         }
+
+        notificationService.notifyAppointmentCompleted(appointment);
 
         return true;
     }
@@ -625,6 +633,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointmentRepository.save(appointment);
         log.info("Assigned agent {} to appointment: {}", agentId, appointmentId);
 
+        notificationService.notifyAppointmentAssigned(appointment);
+
         // Track appointment assignment action for agent ranking
         rankingService.agentAction(agentId, Constants.AgentActionEnum.APPOINTMENT_ASSIGNED, null);
 
@@ -677,6 +687,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 if (appointment.getCustomer() != null) {
                     rankingService.customerAction(appointment.getCustomer().getId(), Constants.CustomerActionEnum.VIEWING_ATTENDED, null);
                 }
+                notificationService.notifyAppointmentCompleted(appointment);
             }
 
             // If status is CANCELLED, update cancelled fields
@@ -692,6 +703,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 if (cancelledReason != null) {
                     appointment.setCancelledReason(cancelledReason);
                 }
+
+                notificationService.notifyAppointmentCancelled(appointment, cancelledReason);
             }
         } else if (cancelledReason != null) {
             // Update cancelled reason even if status is not provided (in case it's already cancelled)
