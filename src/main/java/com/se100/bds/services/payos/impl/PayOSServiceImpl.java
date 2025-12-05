@@ -41,6 +41,10 @@ import java.util.UUID;
 public class PayOSServiceImpl implements PayOSService {
 
     private static final String PAYOS_CHECKOUT_BASE_URL = "https://pay.payos.vn/web/";
+    private static final String PAYOS_PAYMENT_METHOD = "PAYOS";
+    private static final String COMPANY_PAYOUT_METHOD = "COMPANY_PAYOUT";
+    private static final String OWNER_PAYOUT_METHOD = "OWNER_PAYOUT";
+    private static final String CUSTOMER_PAYOUT_METHOD = "CUSTOMER_PAYOUT";
 
     private final PayOS payOS;
     private final ContractRepository contractRepository;
@@ -112,7 +116,7 @@ public class PayOSServiceImpl implements PayOSService {
             .amount(normalizedAmount)
             .dueDate(LocalDate.now())
             .installmentNumber(installmentNumber)
-            .paymentMethod("PAYOS")
+            .paymentMethod(PAYOS_PAYMENT_METHOD)
             .status(PaymentStatusEnum.PENDING)
             .notes(description != null ? description : String.format("%s payment", paymentType.name()))
             .payosOrderCode(orderCode)
@@ -227,7 +231,7 @@ public class PayOSServiceImpl implements PayOSService {
             .paymentType(PaymentTypeEnum.SERVICE_FEE)
             .amount(normalizedAmount)
             .dueDate(LocalDate.now())
-            .paymentMethod("PAYOS")
+            .paymentMethod(PAYOS_PAYMENT_METHOD)
             .status(PaymentStatusEnum.PENDING)
             .notes(description != null ? description : shortDescription)
             .payosOrderCode(orderCode)
@@ -597,7 +601,7 @@ public class PayOSServiceImpl implements PayOSService {
 
         refundSettlement.setPayosOrderCode(orderCode);
         refundSettlement.setStatus(PaymentStatusEnum.PENDING);
-        refundSettlement.setPaymentMethod("PAYOS");
+        refundSettlement.setPaymentMethod(PAYOS_PAYMENT_METHOD);
         refundSettlement.setDueDate(LocalDate.now());
         if (refundSettlement.getNotes() == null || refundSettlement.getNotes().isBlank()) {
             refundSettlement.setNotes(description);
@@ -690,18 +694,160 @@ public class PayOSServiceImpl implements PayOSService {
                 log.info("Service fee payment {} completed", payment.getId());
                 activatePropertyListing(payment);
             }
-            case MONEY_SALE, MONEY_RENTAL -> distributeContractPayment(payment);
-            case PENALTY -> {
-                log.info("Penalty payment {} completed; finalizing contract cancellation", payment.getId());
-//                contractService.finalizeCancellationAfterPenalty(payment);
+            case DEPOSIT, ADVANCE, INSTALLMENT, FULL_PAY, MONTHLY, MONEY_SALE, MONEY_RENTAL -> {
+                log.info("Contract payment {} from customer completed; queuing owner payout", payment.getId());
+                distributeContractPayment(payment);
+                queueOwnerPayout(payment);
             }
             case REFUND -> {
                 log.info("Cancellation refund payment {} completed; finalizing contract settlement", payment.getId());
-//                contractService.finalizeCancellationAfterRefundCollection(payment);
+                queueCustomerRefundForward(payment);
             }
             case SALARY -> log.info("Salary payment {} registered as SUCCESS", payment.getId());
             default -> log.info("Payment {} completed with type {}", payment.getId(), payment.getPaymentType());
         }
+    }
+
+    private void queueCustomerRefundForward(Payment ownerRefundPayment) {
+        if (ownerRefundPayment.getContract() == null || ownerRefundPayment.getContract().getCustomer() == null) {
+            log.warn("Refund payment {} lacks contract/customer context; skipping payout creation", ownerRefundPayment.getId());
+            return;
+        }
+        if (!PAYOS_PAYMENT_METHOD.equalsIgnoreCase(ownerRefundPayment.getPaymentMethod())) {
+            log.debug("Refund payment {} is not a PayOS collection; no payout entry required", ownerRefundPayment.getId());
+            return;
+        }
+
+        UUID contractId = ownerRefundPayment.getContract().getId();
+        Optional<Payment> existing = paymentRepository
+                .findFirstByContract_IdAndPaymentTypeAndPaymentMethodOrderByCreatedAtDesc(contractId, PaymentTypeEnum.REFUND, COMPANY_PAYOUT_METHOD);
+
+        BigDecimal penalty = Optional.ofNullable(ownerRefundPayment.getPenaltyAmount()).orElse(BigDecimal.ZERO);
+        BigDecimal refundAmount = Optional.ofNullable(ownerRefundPayment.getAmount()).orElse(BigDecimal.ZERO);
+        BigDecimal payoutAmount = refundAmount.subtract(penalty).setScale(2, RoundingMode.HALF_UP);
+
+        if (payoutAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.info("No refundable amount to forward after penalties for contract {}", contractId);
+            return;
+        }
+
+        String note = String.format("Forward refund to customer for %s", ownerRefundPayment.getContract().getContractNumber());
+
+        if (existing.isPresent()) {
+            Payment payout = existing.get();
+            if (payout.getStatus() != PaymentStatusEnum.SYSTEM_FAILED) {
+                log.info("Refund payout {} already tracked for contract {} with status {}", payout.getId(), contractId, payout.getStatus());
+                return;
+            }
+            payout.setAmount(payoutAmount);
+            payout.setDueDate(LocalDate.now());
+            payout.setStatus(PaymentStatusEnum.SYSTEM_PENDING);
+            payout.setNotes(note);
+            paymentRepository.save(payout);
+            log.info("Reset failed refund payout {} for contract {}", payout.getId(), contractId);
+            return;
+        }
+
+        Payment payout = Payment.builder()
+                .contract(ownerRefundPayment.getContract())
+                .property(ownerRefundPayment.getProperty())
+                .saleAgent(ownerRefundPayment.getSaleAgent())
+                .paymentType(PaymentTypeEnum.REFUND)
+                .amount(payoutAmount)
+                .dueDate(LocalDate.now())
+                .paymentMethod(COMPANY_PAYOUT_METHOD)
+                .status(PaymentStatusEnum.SYSTEM_PENDING)
+                .notes(note)
+                .build();
+
+        paymentRepository.save(payout);
+        log.info("Created refund payout {} for contract {} amount {}", payout.getId(), contractId, payoutAmount);
+    }
+
+    private void queueOwnerPayout(Payment customerPayment) {
+        if (customerPayment.getContract() == null) {
+            log.warn("Contract payment {} lacks contract context; skipping owner payout", customerPayment.getId());
+            return;
+        }
+        if (!PAYOS_PAYMENT_METHOD.equalsIgnoreCase(customerPayment.getPaymentMethod())) {
+            log.debug("Payment {} is not a PayOS payment; no auto-payout needed", customerPayment.getId());
+            return;
+        }
+
+        Contract contract = customerPayment.getContract();
+        Property property = contract.getProperty();
+        if (property == null || property.getOwner() == null) {
+            log.warn("Contract {} lacks property/owner; cannot create owner payout", contract.getId());
+            return;
+        }
+
+        UUID contractId = contract.getId();
+        PaymentTypeEnum paymentType = customerPayment.getPaymentType();
+        Integer installmentNumber = customerPayment.getInstallmentNumber();
+
+        Optional<Payment> existing = paymentRepository
+                .findFirstByContract_IdAndPaymentTypeAndPaymentMethodOrderByCreatedAtDesc(
+                        contractId, paymentType, OWNER_PAYOUT_METHOD);
+
+        if (existing.isPresent()) {
+            Payment payout = existing.get();
+            if (installmentNumber != null && !installmentNumber.equals(payout.getInstallmentNumber())) {
+                // Different installment; continue to create new one
+            } else if (payout.getStatus() != PaymentStatusEnum.SYSTEM_FAILED) {
+                log.info("Owner payout {} already exists for contract {} type {} with status {}",
+                        payout.getId(), contractId, paymentType, payout.getStatus());
+                return;
+            }
+        }
+
+        BigDecimal customerAmount = Optional.ofNullable(customerPayment.getAmount()).orElse(BigDecimal.ZERO);
+        BigDecimal commissionRate = Optional.ofNullable(property.getCommissionRate())
+                .orElse(Constants.DEFAULT_PROPERTY_COMMISSION_RATE);
+        BigDecimal commission = customerAmount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal serviceFeeShortfall = BigDecimal.ZERO;
+        if (customerPayment.getPaymentType() == PaymentTypeEnum.DEPOSIT ||
+            customerPayment.getPaymentType() == PaymentTypeEnum.FULL_PAY ||
+            customerPayment.getPaymentType() == PaymentTypeEnum.MONEY_SALE ||
+            customerPayment.getPaymentType() == PaymentTypeEnum.MONEY_RENTAL) {
+            BigDecimal totalServiceFee = Optional.ofNullable(property.getServiceFeeAmount()).orElse(BigDecimal.ZERO);
+            BigDecimal collected = Optional.ofNullable(property.getServiceFeeCollectedAmount()).orElse(BigDecimal.ZERO);
+            serviceFeeShortfall = totalServiceFee.subtract(collected);
+            if (serviceFeeShortfall.compareTo(BigDecimal.ZERO) < 0) {
+                serviceFeeShortfall = BigDecimal.ZERO;
+            } else if (serviceFeeShortfall.compareTo(BigDecimal.ZERO) > 0) {
+                log.warn("Property {} still records an unpaid service fee of {} even though listing should be active. Payout will not withhold this amount; please reconcile service fee collection manually.",
+                        property.getId(), serviceFeeShortfall);
+                serviceFeeShortfall = BigDecimal.ZERO;
+            }
+        }
+
+        BigDecimal ownerAmount = customerAmount.subtract(commission).setScale(2, RoundingMode.HALF_UP);
+        if (ownerAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.info("No payout amount for owner after commission/fees for contract {} payment {}",
+                    contractId, customerPayment.getId());
+            return;
+        }
+
+        String note = String.format("Payout to owner for %s - %s",
+                contract.getContractNumber(), paymentType.name());
+
+        Payment payout = Payment.builder()
+                .contract(contract)
+                .property(property)
+                .saleAgent(customerPayment.getSaleAgent())
+                .paymentType(paymentType)
+                .amount(ownerAmount)
+                .dueDate(LocalDate.now())
+                .installmentNumber(installmentNumber)
+                .paymentMethod(OWNER_PAYOUT_METHOD)
+                .status(PaymentStatusEnum.SYSTEM_PENDING)
+                .notes(note)
+                .build();
+
+        paymentRepository.save(payout);
+            log.info("Created owner payout {} for contract {} type {} amount {} (customer paid {}, commission {})",
+                payout.getId(), contractId, paymentType, ownerAmount, customerAmount, commission);
     }
 
     private void activatePropertyListing(Payment payment) {

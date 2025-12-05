@@ -22,7 +22,7 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/payments")
+@RequestMapping("/payos")
 @Tag(name = "40. Payments", description = "Payment APIs via PayOS")
 public class PayOSPaymentController extends AbstractBaseController {
     private final PayOSService payOSService;
