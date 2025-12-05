@@ -1,6 +1,7 @@
 package com.se100.bds.repositories.domains.appointment;
 
 import com.se100.bds.models.entities.appointment.Appointment;
+import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.models.entities.user.Customer;
 import com.se100.bds.utils.Constants;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,8 @@ import java.util.UUID;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID>, JpaSpecificationExecutor<Appointment> {
     Page<Appointment> findAllByStatus(Constants.AppointmentStatusEnum status, Pageable pageable);
+
+    List<Appointment> findAllByPropertyAndCustomer(Property property, Customer customer);
 
     @EntityGraph(attributePaths = {"property", "property.ward", "property.ward.district", "property.ward.district.city", "property.mediaList"})
     List<Appointment> findAllByCustomer_Id(UUID customerId);

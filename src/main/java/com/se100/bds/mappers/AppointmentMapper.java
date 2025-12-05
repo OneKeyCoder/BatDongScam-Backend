@@ -1,5 +1,6 @@
 package com.se100.bds.mappers;
 
+import com.se100.bds.dtos.responses.appointment.BookAppointmentResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
 import com.se100.bds.dtos.responses.appointment.ViewingListItem;
@@ -61,6 +62,20 @@ public class AppointmentMapper extends BaseMapper {
                     mapper.skip(ViewingListItem::setCustomerTier);
                     mapper.skip(ViewingListItem::setSalesAgentName);
                     mapper.skip(ViewingListItem::setSalesAgentTier);
+                });
+
+        modelMapper.typeMap(Appointment.class, BookAppointmentResponse.class)
+                .addMappings(mapper -> {
+                    mapper.map(Appointment::getId, BookAppointmentResponse::setAppointmentId);
+                    mapper.map(src -> src.getProperty().getId(), BookAppointmentResponse::setPropertyId);
+                    mapper.map(src -> src.getProperty().getTitle(), BookAppointmentResponse::setPropertyTitle);
+                    mapper.map(src -> src.getProperty().getFullAddress(), BookAppointmentResponse::setPropertyAddress);
+                    mapper.map(Appointment::getRequestedDate, BookAppointmentResponse::setRequestedDate);
+                    mapper.map(src -> src.getStatus().name(), BookAppointmentResponse::setStatus);
+                    mapper.map(Appointment::getCustomerRequirements, BookAppointmentResponse::setCustomerRequirements);
+                    mapper.map(src -> src.getAgent() != null ? src.getAgent().getId() : null, BookAppointmentResponse::setAgentId);
+                    mapper.map(src -> src.getAgent() != null ? src.getAgent().getUser().getFullName() : null, BookAppointmentResponse::setAgentName);
+                    mapper.map(Appointment::getCreatedAt, BookAppointmentResponse::setCreatedAt);
                 });
     }
 
@@ -167,5 +182,14 @@ public class AppointmentMapper extends BaseMapper {
         agentCard.setRating(rating);
         agentCard.setTotalRates(totalRates);
         return agentCard;
+    }
+
+    /**
+     * Build BookAppointmentResponse using configured mappings
+     */
+    public BookAppointmentResponse buildBookingResponse(Appointment appointment, String message) {
+        BookAppointmentResponse response = modelMapper.map(appointment, BookAppointmentResponse.class);
+        response.setMessage(message);
+        return response;
     }
 }

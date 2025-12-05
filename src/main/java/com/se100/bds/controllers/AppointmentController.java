@@ -1,8 +1,12 @@
 package com.se100.bds.controllers;
 
 import com.se100.bds.controllers.base.AbstractBaseController;
+import com.se100.bds.dtos.requests.appointment.BookAppointmentRequest;
+import com.se100.bds.dtos.requests.appointment.CancelAppointmentRequest;
+import com.se100.bds.dtos.requests.appointment.RateAppointmentRequest;
 import com.se100.bds.dtos.responses.PageResponse;
 import com.se100.bds.dtos.responses.SingleResponse;
+import com.se100.bds.dtos.responses.appointment.BookAppointmentResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
@@ -11,8 +15,13 @@ import com.se100.bds.services.domains.appointment.AppointmentService;
 import com.se100.bds.utils.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,6 +43,77 @@ import static com.se100.bds.utils.Constants.SECURITY_SCHEME_NAME;
 @Slf4j
 public class AppointmentController extends AbstractBaseController {
     private final AppointmentService appointmentService;
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'SALESAGENT')")
+    @Operation(
+            summary = "Create a viewing appointment",
+            description = "Creates a new appointment request for a customer to view a property. The appointment will be in PENDING status until an agent confirms it. Admin/Agent can create appointments on behalf of customers by providing customerId, and can optionally assign an agent.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Appointment created successfully",
+                    content = @Content(schema = @Schema(implementation = SingleResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request or property not available"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Property not found")
+    })
+    public ResponseEntity<SingleResponse<BookAppointmentResponse>> createAppointment(
+            @Valid @RequestBody BookAppointmentRequest request
+    ) {
+        BookAppointmentResponse response = appointmentService.bookAppointment(request);
+        return responseFactory.successSingle(response, "Appointment created successfully");
+    }
+
+
+    @PatchMapping("/{appointmentId}/cancel")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SALESAGENT', 'ADMIN')")
+    @Operation(
+            summary = "Cancel an appointment",
+            description = "Changes appointment status to CANCELLED. Customer can cancel their own appointments, agents can cancel assigned appointments, admin can cancel any.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Appointment cancelled successfully",
+                    content = @Content(schema = @Schema(implementation = SingleResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Appointment already cancelled or completed"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Not authorized to cancel this appointment"),
+            @ApiResponse(responseCode = "404", description = "Appointment not found")
+    })
+    public ResponseEntity<SingleResponse<Boolean>> cancelAppointment(
+            @Parameter(description = "Appointment ID", required = true)
+            @PathVariable UUID appointmentId,
+
+            @Parameter(description = "Cancellation details")
+            @Valid @RequestBody(required = false) CancelAppointmentRequest request
+    ) {
+        String reason = request != null ? request.getReason() : null;
+        boolean result = appointmentService.cancelAppointment(appointmentId, reason);
+        return responseFactory.successSingle(result, "Appointment cancelled successfully");
+    }
+
+    @PatchMapping("/{appointmentId}/complete")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @Operation(
+            summary = "Mark appointment as completed",
+            description = "Allows customers (their own appointments) or admins to mark an appointment as completed once the viewing happened.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<Boolean>> completeAppointment(
+            @Parameter(description = "Appointment ID", required = true)
+            @PathVariable UUID appointmentId
+    ) {
+        boolean result = appointmentService.completeAppointment(appointmentId);
+        String message = result ? "Appointment marked as completed" : "Appointment was already completed";
+        return responseFactory.successSingle(result, message);
+    }
 
     @GetMapping("/viewing-cards")
     @Operation(
@@ -144,22 +224,20 @@ public class AppointmentController extends AbstractBaseController {
         return responseFactory.successSingle(viewingDetails, "Viewing details retrieved successfully");
     }
 
+
     @PreAuthorize("hasRole('CUSTOMER')")
-    @PutMapping("/rate/{appointmentId}")
+    @PatchMapping("/{appointmentId}/rate")
     @Operation(
-            summary = "Customer Rate an appointment",
-            description = "Rate an appointment with a rating (1-5) and optional comment",
+            summary = "Rate an appointment",
+            description = "Rate a completed appointment with a rating (1-5) and optional comment",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
     public ResponseEntity<SingleResponse<Boolean>> rateAppointment(
             @Parameter(description = "Appointment ID", required = true)
             @PathVariable UUID appointmentId,
-            @Parameter(description = "Rating (1-5)", required = true)
-            @RequestParam Short rating,
-            @Parameter(description = "Comment about the appointment")
-            @RequestParam(required = false) String comment) {
+            @Valid @RequestBody RateAppointmentRequest request) {
 
-        boolean result = appointmentService.rateAppointment(appointmentId, rating, comment);
+        boolean result = appointmentService.rateAppointment(appointmentId, request.getRating(), request.getComment());
 
         String message = result
                 ? "Appointment rated successfully"

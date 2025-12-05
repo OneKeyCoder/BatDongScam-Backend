@@ -1,20 +1,29 @@
 package com.se100.bds.services.domains.appointment.impl;
 
+import com.se100.bds.dtos.requests.appointment.BookAppointmentRequest;
+import com.se100.bds.dtos.responses.appointment.BookAppointmentResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
 import com.se100.bds.dtos.responses.appointment.ViewingListItem;
 import com.se100.bds.dtos.responses.user.simple.PropertyOwnerSimpleCard;
 import com.se100.bds.dtos.responses.user.simple.SalesAgentSimpleCard;
+import com.se100.bds.exceptions.NotFoundException;
 import com.se100.bds.mappers.AppointmentMapper;
 import com.se100.bds.models.entities.AbstractBaseEntity;
 import com.se100.bds.models.entities.appointment.Appointment;
 import com.se100.bds.models.entities.document.IdentificationDocument;
 import com.se100.bds.models.entities.property.Media;
+import com.se100.bds.models.entities.property.Property;
+import com.se100.bds.models.entities.user.Customer;
+import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.models.entities.user.User;
 import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceCareer;
 import com.se100.bds.models.schemas.ranking.IndividualSalesAgentPerformanceMonth;
 import com.se100.bds.repositories.domains.appointment.AppointmentRepository;
+import com.se100.bds.repositories.domains.property.PropertyRepository;
+import com.se100.bds.repositories.domains.user.CustomerRepository;
+import com.se100.bds.repositories.domains.user.SaleAgentRepository;
 import com.se100.bds.services.domains.appointment.AppointmentService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.user.UserService;
@@ -26,6 +35,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -41,9 +51,200 @@ import java.util.stream.Collectors;
 public class AppointmentServiceImpl implements AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
+    private final PropertyRepository propertyRepository;
+    private final CustomerRepository customerRepository;
+    private final SaleAgentRepository saleAgentRepository;
     private final UserService userService;
     private final RankingService rankingService;
     private final AppointmentMapper appointmentMapper;
+
+    @Override
+    @Transactional
+    public BookAppointmentResponse bookAppointment(BookAppointmentRequest request) {
+        User currentUser = userService.getUser();
+        if (currentUser == null) {
+            throw new NotFoundException("Current user not found");
+        }
+
+        Constants.RoleEnum currentRole = currentUser.getRole();
+        boolean isCustomer = currentRole == Constants.RoleEnum.CUSTOMER;
+        boolean isAdmin = currentRole == Constants.RoleEnum.ADMIN;
+        boolean isAgent = currentRole == Constants.RoleEnum.SALESAGENT;
+
+        if ((isAdmin || isAgent) && request.getCustomerId() == null) {
+            throw new IllegalArgumentException("customerId is required when booking on behalf of a customer");
+        }
+
+        if (isCustomer && request.getCustomerId() != null && !request.getCustomerId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Customers cannot book appointments for other users");
+        }
+
+        if (request.getRequestedDate() == null || !request.getRequestedDate().isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Requested date must be later than the current time");
+        }
+
+        // Determine the customer: use provided customerId (for admin/agent) or current user
+        UUID targetCustomerId = request.getCustomerId() != null ? request.getCustomerId() : currentUser.getId();
+        
+        // Get customer entity
+        Customer customer = customerRepository.findById(targetCustomerId)
+                .orElseThrow(() -> new NotFoundException("Customer not found: " + targetCustomerId));
+
+        // Get property
+        Property property = propertyRepository.findById(request.getPropertyId())
+                .orElseThrow(() -> new NotFoundException("Property not found: " + request.getPropertyId()));
+
+        // Check if property is available for viewing
+        if (property.getStatus() == null || 
+            property.getStatus() == Constants.PropertyStatusEnum.PENDING ||
+            property.getStatus() == Constants.PropertyStatusEnum.REJECTED ||
+            property.getStatus() == Constants.PropertyStatusEnum.SOLD ||
+            property.getStatus() == Constants.PropertyStatusEnum.RENTED ||
+            property.getStatus() == Constants.PropertyStatusEnum.REMOVED ||
+            property.getStatus() == Constants.PropertyStatusEnum.DELETED) {
+            throw new IllegalStateException("Property is not available for viewing");
+        }
+
+        // Check if customer already has a pending appointment for this property
+        List<Appointment> existingAppointments = appointmentRepository.findAllByPropertyAndCustomer(property, customer);
+        boolean hasPendingAppointment = existingAppointments.stream()
+                .anyMatch(a -> a.getStatus() == Constants.AppointmentStatusEnum.PENDING ||
+                               a.getStatus() == Constants.AppointmentStatusEnum.CONFIRMED);
+        if (hasPendingAppointment) {
+            throw new IllegalStateException("You already have a pending or confirmed appointment for this property");
+        }
+
+        // Optional: assign agent if provided
+        SaleAgent assignedAgent = null;
+        if (request.getAgentId() != null) {
+            assignedAgent = saleAgentRepository.findById(request.getAgentId())
+                    .orElseThrow(() -> new NotFoundException("Sales agent not found: " + request.getAgentId()));
+        }
+
+        // Create the appointment
+        Appointment.AppointmentBuilder appointmentBuilder = Appointment.builder()
+            .property(property)
+            .customer(customer)
+            .requestedDate(request.getRequestedDate())
+            .customerRequirements(request.getCustomerRequirements())
+            .status(assignedAgent != null ? Constants.AppointmentStatusEnum.CONFIRMED : Constants.AppointmentStatusEnum.PENDING);
+        
+        if (assignedAgent != null) {
+            appointmentBuilder.agent(assignedAgent)
+                .confirmedDate(LocalDateTime.now());
+        }
+        
+        Appointment appointment = appointmentBuilder.build();
+        Appointment saved = appointmentRepository.save(appointment);
+        
+        log.info("Created appointment {} for customer {} on property {}, agent: {}", 
+                saved.getId(), customer.getId(), property.getId(), 
+                assignedAgent != null ? assignedAgent.getId() : "unassigned");
+
+        // Track customer action for ranking
+        rankingService.customerAction(customer.getId(), Constants.CustomerActionEnum.VIEWING_REQUESTED, null);
+
+        String confirmationMessage = assignedAgent != null
+            ? "Appointment created and assigned to agent " + assignedAgent.getUser().getFirstName() + " " + assignedAgent.getUser().getLastName()
+            : "Your viewing appointment has been booked. You will be notified when an agent confirms the appointment.";
+
+        return appointmentMapper.buildBookingResponse(saved, confirmationMessage);
+    }
+
+    @Override
+    @Transactional
+    public boolean cancelAppointment(UUID appointmentId, String reason) {
+        User currentUser = userService.getUser();
+        if (currentUser == null) {
+            throw new NotFoundException("Current user not found");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NotFoundException("Appointment not found: " + appointmentId));
+
+        // Verify ownership - only the customer who booked, assigned agent, or admin can cancel
+        boolean isCustomer = appointment.getCustomer() != null && 
+                             appointment.getCustomer().getId().equals(currentUser.getId());
+        boolean isAgent = appointment.getAgent() != null && 
+                          appointment.getAgent().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == Constants.RoleEnum.ADMIN;
+
+        if (!isCustomer && !isAgent && !isAdmin) {
+            throw new IllegalStateException("You are not authorized to cancel this appointment");
+        }
+
+        // Check if already cancelled or completed
+        if (appointment.getStatus() == Constants.AppointmentStatusEnum.CANCELLED) {
+            throw new IllegalStateException("Appointment is already cancelled");
+        }
+        if (appointment.getStatus() == Constants.AppointmentStatusEnum.COMPLETED) {
+            throw new IllegalStateException("Cannot cancel a completed appointment");
+        }
+
+        // Update appointment
+        appointment.setStatus(Constants.AppointmentStatusEnum.CANCELLED);
+        appointment.setCancelledAt(LocalDateTime.now());
+        appointment.setCancelledBy(currentUser.getRole());
+        appointment.setCancelledReason(reason);
+
+        appointmentRepository.save(appointment);
+        log.info("Cancelled appointment {} by {} (role: {})", 
+                appointmentId, currentUser.getId(), currentUser.getRole());
+
+        // Track cancellation for ranking penalties (admin-triggered cancellations intentionally bypass ranking changes)
+        if (isAgent && appointment.getAgent() != null) {
+            rankingService.agentAction(appointment.getAgent().getId(), Constants.AgentActionEnum.APPOINTMENT_CANCELLED, null);
+        }
+        if (isCustomer && appointment.getCustomer() != null) {
+            rankingService.customerAction(appointment.getCustomer().getId(), Constants.CustomerActionEnum.VIEWING_CANCELLED, null);
+        }
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean completeAppointment(UUID appointmentId) {
+        User currentUser = userService.getUser();
+        if (currentUser == null) {
+            throw new NotFoundException("Current user not found");
+        }
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NotFoundException("Appointment not found: " + appointmentId));
+
+        boolean isCustomer = appointment.getCustomer() != null &&
+                appointment.getCustomer().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == Constants.RoleEnum.ADMIN;
+
+        if (!isCustomer && !isAdmin) {
+            throw new IllegalStateException("You are not authorized to complete this appointment");
+        }
+
+        if (appointment.getStatus() == Constants.AppointmentStatusEnum.CANCELLED) {
+            throw new IllegalStateException("Cannot complete a cancelled appointment");
+        }
+
+        if (appointment.getStatus() == Constants.AppointmentStatusEnum.COMPLETED) {
+            return false;
+        }
+
+        if (appointment.getRequestedDate() != null && appointment.getRequestedDate().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Appointment time has not occurred yet");
+        }
+
+        appointment.setStatus(Constants.AppointmentStatusEnum.COMPLETED);
+        appointmentRepository.save(appointment);
+
+        if (appointment.getAgent() != null) {
+            rankingService.agentAction(appointment.getAgent().getId(), Constants.AgentActionEnum.APPOINTMENT_COMPLETED, null);
+        }
+        if (appointment.getCustomer() != null) {
+            rankingService.customerAction(appointment.getCustomer().getId(), Constants.CustomerActionEnum.VIEWING_ATTENDED, null);
+        }
+
+        return true;
+    }
 
     @Override
     public Page<ViewingCardDto> myViewingCards(Pageable pageable, Constants.AppointmentStatusEnum statusEnum, Integer day, Integer month, Integer year) {
@@ -361,10 +562,12 @@ public class AppointmentServiceImpl implements AppointmentService {
                             Constants.RoleEnum.CUSTOMER
                     );
 
-                    // Get sales agent tier (current user is the agent)
-                    String agentTier = rankingService.getSaleAgentCurrentMonth(
-                            appointment.getAgent().getId()
-                    ).getPerformanceTier().getValue();
+                    String agentTier = null;
+                    if (appointment.getAgent() != null) {
+                        agentTier = rankingService.getSaleAgentCurrentMonth(appointment.getAgent().getId())
+                                                    .getPerformanceTier()
+                                                    .getValue();
+                    }
 
                     // Enrich with customer, agent, and thumbnail data
                     appointmentMapper.enrichViewingListItem(dto, appointment, customerTier, agentTier);
@@ -393,6 +596,7 @@ public class AppointmentServiceImpl implements AppointmentService {
             if (appointment.getAgent() != null) {
                 appointment.setAgent(null);
                 appointment.setStatus(Constants.AppointmentStatusEnum.PENDING);
+                appointment.setConfirmedDate(null);
                 appointmentRepository.save(appointment);
                 log.info("Removed agent from appointment: {}", appointmentId);
                 return true;
@@ -412,8 +616,10 @@ public class AppointmentServiceImpl implements AppointmentService {
                     appointment.getAgent().getId(), agentId, appointmentId);
         }
 
-        if (appointment.getStatus() == Constants.AppointmentStatusEnum.PENDING)
+        if (appointment.getStatus() == Constants.AppointmentStatusEnum.PENDING) {
             appointment.setStatus(Constants.AppointmentStatusEnum.CONFIRMED);
+            appointment.setConfirmedDate(LocalDateTime.now());
+        }
 
         appointment.setAgent(agentUser.getSaleAgent());
         appointmentRepository.save(appointment);
@@ -507,6 +713,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         // Find the appointment
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id: " + appointmentId));
+
+        if (appointment.getStatus() != Constants.AppointmentStatusEnum.COMPLETED) {
+            throw new IllegalStateException("Only completed appointments can be rated");
+        }
 
         boolean updated = false;
 
