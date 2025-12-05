@@ -137,6 +137,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDetailResponse createSalaryPayment(CreateSalaryPaymentRequest request) {
+        // TODO: Replace manual salary input with calculated values driven by financial performance metrics.
         SaleAgent agent = saleAgentRepository.findById(request.getAgentId())
                 .orElseThrow(() -> new NotFoundException("Sales agent not found: " + request.getAgentId()));
 
@@ -162,6 +163,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDetailResponse createBonusPayment(CreateBonusPaymentRequest request) {
+        // TODO: Drive bonus amount from agreed KPI formulas instead of raw request payloads.
         SaleAgent agent = saleAgentRepository.findById(request.getAgentId())
                 .orElseThrow(() -> new NotFoundException("Sales agent not found: " + request.getAgentId()));
 

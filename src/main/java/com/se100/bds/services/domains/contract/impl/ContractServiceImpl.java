@@ -254,6 +254,7 @@ public class ContractServiceImpl implements ContractService {
             throw new IllegalStateException("Cannot cancel a completed contract");
         }
 
+        // TODO: Replace this temporary penalty estimation with the finalized business-approved formula.
         // Calculate penalty
         BigDecimal penalty = BigDecimal.ZERO;
         if (!Boolean.TRUE.equals(request.getWaivePenalty()) || 
@@ -276,6 +277,7 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional(readOnly = true)
     public BigDecimal calculateCancellationPenalty(UUID contractId) {
+        // TODO: Align this penalty breakdown (deposit + percentage of remaining amount) with Finance once official policy is ready.
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new NotFoundException("Contract not found: " + contractId));
 
@@ -290,7 +292,7 @@ public class ContractServiceImpl implements ContractService {
         // Base penalty: lose deposit
         BigDecimal penalty = depositAmount;
 
-        // Additional penalty based on contract progress
+        // Additional penalty based on contract progress (placeholder tiers pending confirmation)
         if (contract.getStatus() == ContractStatusEnum.ACTIVE) {
             long totalDays = ChronoUnit.DAYS.between(contract.getStartDate(), contract.getEndDate());
             long elapsedDays = ChronoUnit.DAYS.between(contract.getStartDate(), LocalDate.now());
