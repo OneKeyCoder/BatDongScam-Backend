@@ -1,5 +1,7 @@
 package com.se100.bds.services.domains.appointment;
 
+import com.se100.bds.dtos.requests.appointment.BookAppointmentRequest;
+import com.se100.bds.dtos.responses.appointment.BookAppointmentResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingCardDto;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
@@ -13,6 +15,11 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AppointmentService {
+    // BOOKING
+    BookAppointmentResponse bookAppointment(BookAppointmentRequest request);
+
+    // CANCEL
+    boolean cancelAppointment(UUID appointmentId, String reason);
     // USER
     Page<ViewingCardDto> myViewingCards(
             Pageable pageable,
@@ -61,4 +68,7 @@ public interface AppointmentService {
 
     // Rate appointment
     boolean rateAppointment(UUID appointmentId, Short rating, String comment);
+
+    // Complete appointment
+    boolean completeAppointment(UUID appointmentId);
 }

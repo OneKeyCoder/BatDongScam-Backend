@@ -200,6 +200,11 @@ public class RankingServiceImpl implements RankingService {
                 performance.setMonthAppointmentsCompleted(
                     (performance.getMonthAppointmentsCompleted() != null ? performance.getMonthAppointmentsCompleted() : 0) + 1
                 );
+            case APPOINTMENT_CANCELLED -> {
+                performance.setHandlingProperties(
+                    Math.max(0, (performance.getHandlingProperties() != null ? performance.getHandlingProperties() : 0) - 1)
+                );
+            }
             case CONTRACT_SIGNED ->
                 performance.setMonthContracts(
                     (performance.getMonthContracts() != null ? performance.getMonthContracts() : 0) + 1
@@ -273,6 +278,11 @@ public class RankingServiceImpl implements RankingService {
             case VIEWING_ATTENDED -> {
                 potential.setMonthViewingAttended(
                     (potential.getMonthViewingAttended() != null ? potential.getMonthViewingAttended() : 0) + 1
+                );
+            }
+            case VIEWING_CANCELLED -> {
+                potential.setMonthViewingsRequested(
+                    Math.max(0, (potential.getMonthViewingsRequested() != null ? potential.getMonthViewingsRequested() : 0) - 1)
                 );
             }
             case PURCHASE_MADE -> {
