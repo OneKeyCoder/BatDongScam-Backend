@@ -123,6 +123,31 @@ public class AssignmentController extends AbstractBaseController {
         return responseFactory.successSingle(result, message);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/admin/viewings/{appointmentId}/agent")
+    @Operation(
+            summary = "Admin assign or remove agent on a viewing",
+            description = "Convenience endpoint to swap or remove an agent from a specific viewing appointment. Pass agentId to assign or omit it to remove the current agent.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<Boolean>> assignAgentToViewing(
+            @Parameter(description = "Appointment ID", required = true)
+            @PathVariable UUID appointmentId,
+            @Parameter(description = "Agent ID (null to remove)")
+            @RequestParam(required = false) UUID agentId) {
+
+        boolean result = appointmentService.assignAgent(agentId, appointmentId);
+
+        String message;
+        if (agentId == null) {
+            message = result ? "Agent removed from viewing successfully" : "No agent was assigned to this viewing";
+        } else {
+            message = result ? "Agent assigned to viewing successfully" : "Viewing already assigned to this agent";
+        }
+
+        return responseFactory.successSingle(result, message);
+    }
+
     @PreAuthorize("hasRole('SALESAGENT')")
     @GetMapping("/my-viewing-list")
     @Operation(

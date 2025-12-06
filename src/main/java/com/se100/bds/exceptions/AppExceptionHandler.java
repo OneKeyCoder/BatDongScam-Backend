@@ -80,6 +80,7 @@ public class AppExceptionHandler {
             HttpMediaTypeNotSupportedException.class,
             MethodArgumentTypeMismatchException.class,
             IllegalArgumentException.class,
+            IllegalStateException.class,
             InvalidDataAccessApiUsageException.class,
             ConstraintViolationException.class,
             MissingRequestHeaderException.class,
@@ -92,6 +93,12 @@ public class AppExceptionHandler {
 
     @ExceptionHandler(ChangeSetPersister.NotFoundException.class)
     public final ResponseEntity<ErrorResponse> handleNotFoundException(final ChangeSetPersister.NotFoundException e) {
+        log.error(e.toString(), e.getMessage());
+        return build(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public final ResponseEntity<ErrorResponse> handleDomainNotFound(final NotFoundException e) {
         log.error(e.toString(), e.getMessage());
         return build(HttpStatus.NOT_FOUND, e.getMessage());
     }

@@ -191,6 +191,7 @@ public final class Constants {
         MONEY_SALE("MONEY_SALE"),
         MONEY_RENTAL("MONEY_RENTAL"),
         SALARY("SALARY"),
+        BONUS("BONUS"),
         SERVICE_FEE("SERVICE_FEE");
 
         private final String value;
@@ -516,6 +517,7 @@ public final class Constants {
         PROPERTY_ASSIGNED("PROPERTY_ASSIGNED"),
         APPOINTMENT_ASSIGNED("APPOINTMENT_ASSIGNED"),
         APPOINTMENT_COMPLETED("APPOINTMENT_COMPLETED"),
+        APPOINTMENT_CANCELLED("APPOINTMENT_CANCELLED"),
         CONTRACT_SIGNED("CONTRACT_SIGNED"),
         RATED("RATED");
 
@@ -534,6 +536,7 @@ public final class Constants {
     public enum CustomerActionEnum {
         VIEWING_REQUESTED("VIEWING_REQUESTED"),
         VIEWING_ATTENDED("VIEWING_ATTENDED"),
+        VIEWING_CANCELLED("VIEWING_CANCELLED"),
         SPENDING_MADE("SPENDING_MADE"),
         PURCHASE_MADE("PURCHASE_MADE"),
         RENTAL_MADE("RENTAL_MADE"),

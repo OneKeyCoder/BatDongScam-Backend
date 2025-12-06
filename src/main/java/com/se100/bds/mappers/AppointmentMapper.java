@@ -1,5 +1,6 @@
 package com.se100.bds.mappers;
 
+import com.se100.bds.dtos.responses.appointment.BookAppointmentResponse;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsCustomer;
 import com.se100.bds.dtos.responses.appointment.ViewingDetailsAdmin;
 import com.se100.bds.dtos.responses.appointment.ViewingListItem;
@@ -24,19 +25,29 @@ public class AppointmentMapper extends BaseMapper {
     protected void configureCustomMappings() {
         // Configure mapping from Appointment to ViewingDetails
         modelMapper.typeMap(Appointment.class, ViewingDetailsCustomer.class)
-                .addMappings(mapper -> {
-                    // Map property fields to ViewingDetails
-                    mapper.map(src -> src.getProperty().getTitle(), ViewingDetailsCustomer::setTitle);
-                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingDetailsCustomer::setPriceAmount);
-                    mapper.map(src -> src.getProperty().getArea(), ViewingDetailsCustomer::setArea);
-                    mapper.map(src -> src.getProperty().getDescription(), ViewingDetailsCustomer::setDescription);
-                    mapper.map(src -> src.getProperty().getRooms(), ViewingDetailsCustomer::setRooms);
-                    mapper.map(src -> src.getProperty().getBathrooms(), ViewingDetailsCustomer::setBathRooms);
-                    mapper.map(src -> src.getProperty().getBedrooms(), ViewingDetailsCustomer::setBedRooms);
-                    mapper.map(src -> src.getProperty().getFloors(), ViewingDetailsCustomer::setFloors);
-                    mapper.map(src -> src.getProperty().getHouseOrientation(), ViewingDetailsCustomer::setHouseOrientation);
-                    mapper.map(src -> src.getProperty().getBalconyOrientation(), ViewingDetailsCustomer::setBalconyOrientation);
-                    mapper.map(Appointment::getAgentNotes, ViewingDetailsCustomer::setNotes);
+            .addMappings(mapper -> {
+                // Map property fields to ViewingDetails (defensively handle null property)
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getTitle() : null,
+                    ViewingDetailsCustomer::setTitle);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getPriceAmount() : null,
+                    ViewingDetailsCustomer::setPriceAmount);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getArea() : null,
+                    ViewingDetailsCustomer::setArea);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getDescription() : null,
+                    ViewingDetailsCustomer::setDescription);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getRooms() : null,
+                    ViewingDetailsCustomer::setRooms);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getBathrooms() : null,
+                    ViewingDetailsCustomer::setBathRooms);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getBedrooms() : null,
+                    ViewingDetailsCustomer::setBedRooms);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getFloors() : null,
+                    ViewingDetailsCustomer::setFloors);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getHouseOrientation() : null,
+                    ViewingDetailsCustomer::setHouseOrientation);
+                mapper.map(src -> src.getProperty() != null ? src.getProperty().getBalconyOrientation() : null,
+                    ViewingDetailsCustomer::setBalconyOrientation);
+                mapper.map(Appointment::getAgentNotes, ViewingDetailsCustomer::setNotes);
                 });
 
         // Configure mapping from Appointment to ViewingListItemDto
@@ -47,20 +58,56 @@ public class AppointmentMapper extends BaseMapper {
                     mapper.map(Appointment::getStatus, ViewingListItem::setStatus);
 
                     // Map property fields
-                    mapper.map(src -> src.getProperty().getTitle(), ViewingListItem::setPropertyName);
-                    mapper.map(src -> src.getProperty().getPriceAmount(), ViewingListItem::setPrice);
-                    mapper.map(src -> src.getProperty().getArea(), ViewingListItem::setArea);
+                        mapper.map(src -> src.getProperty() != null ? src.getProperty().getTitle() : null,
+                            ViewingListItem::setPropertyName);
+                        mapper.map(src -> src.getProperty() != null ? src.getProperty().getPriceAmount() : null,
+                            ViewingListItem::setPrice);
+                        mapper.map(src -> src.getProperty() != null ? src.getProperty().getArea() : null,
+                            ViewingListItem::setArea);
 
                     // Map location fields
-                    mapper.map(src -> src.getProperty().getWard().getWardName(), ViewingListItem::setWardName);
-                    mapper.map(src -> src.getProperty().getWard().getDistrict().getDistrictName(), ViewingListItem::setDistrictName);
-                    mapper.map(src -> src.getProperty().getWard().getDistrict().getCity().getCityName(), ViewingListItem::setCityName);
+                        mapper.map(src -> src.getProperty() != null && src.getProperty().getWard() != null
+                                ? src.getProperty().getWard().getWardName()
+                                : null,
+                            ViewingListItem::setWardName);
+                        mapper.map(src -> src.getProperty() != null && src.getProperty().getWard() != null
+                                && src.getProperty().getWard().getDistrict() != null
+                                ? src.getProperty().getWard().getDistrict().getDistrictName()
+                                : null,
+                            ViewingListItem::setDistrictName);
+                        mapper.map(src -> src.getProperty() != null && src.getProperty().getWard() != null
+                                && src.getProperty().getWard().getDistrict() != null
+                                && src.getProperty().getWard().getDistrict().getCity() != null
+                                ? src.getProperty().getWard().getDistrict().getCity().getCityName()
+                                : null,
+                            ViewingListItem::setCityName);
 
                     // Skip customer and agent - will be set manually in service to avoid lazy loading issues
                     mapper.skip(ViewingListItem::setCustomerName);
                     mapper.skip(ViewingListItem::setCustomerTier);
                     mapper.skip(ViewingListItem::setSalesAgentName);
                     mapper.skip(ViewingListItem::setSalesAgentTier);
+                });
+
+        modelMapper.typeMap(Appointment.class, BookAppointmentResponse.class)
+                .addMappings(mapper -> {
+                    mapper.map(Appointment::getId, BookAppointmentResponse::setAppointmentId);
+                        mapper.map(src -> src.getProperty() != null ? src.getProperty().getId() : null,
+                            BookAppointmentResponse::setPropertyId);
+                        mapper.map(src -> src.getProperty() != null ? src.getProperty().getTitle() : null,
+                            BookAppointmentResponse::setPropertyTitle);
+                        mapper.map(src -> src.getProperty() != null ? src.getProperty().getFullAddress() : null,
+                            BookAppointmentResponse::setPropertyAddress);
+                    mapper.map(Appointment::getRequestedDate, BookAppointmentResponse::setRequestedDate);
+                        mapper.map(src -> src.getStatus() != null ? src.getStatus().name() : null,
+                            BookAppointmentResponse::setStatus);
+                    mapper.map(Appointment::getCustomerRequirements, BookAppointmentResponse::setCustomerRequirements);
+                    mapper.map(src -> src.getAgent() != null ? src.getAgent().getId() : null, BookAppointmentResponse::setAgentId);
+                        mapper.map(src -> src.getAgent() != null && src.getAgent().getUser() != null
+                                ? src.getAgent().getUser().getFullName()
+                                : null,
+                            BookAppointmentResponse::setAgentName);
+                    mapper.map(Appointment::getCreatedAt, BookAppointmentResponse::setCreatedAt);
                 });
     }
 
@@ -167,5 +214,14 @@ public class AppointmentMapper extends BaseMapper {
         agentCard.setRating(rating);
         agentCard.setTotalRates(totalRates);
         return agentCard;
+    }
+
+    /**
+     * Build BookAppointmentResponse using configured mappings
+     */
+    public BookAppointmentResponse buildBookingResponse(Appointment appointment, String message) {
+        BookAppointmentResponse response = modelMapper.map(appointment, BookAppointmentResponse.class);
+        response.setMessage(message);
+        return response;
     }
 }
