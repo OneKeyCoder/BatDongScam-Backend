@@ -60,6 +60,12 @@ spring:
   jackson:
     mapper:
       accept-case-insensitive-enums: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE}
+
 
 springdoc:
   api-docs:
