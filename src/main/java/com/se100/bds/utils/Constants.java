@@ -21,7 +21,7 @@ public final class Constants {
         ADMIN("ADMIN"),
         SALESAGENT("SALESAGENT"),
         GUEST("GUEST"),
-        PROPERTY_OWNER("UNVERIFIED_SEER"),
+        PROPERTY_OWNER("PROPERTY_OWNER"),
         CUSTOMER("CUSTOMER"),
         ACCOUNTANT("ACCOUNTANT");
 
