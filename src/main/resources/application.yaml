@@ -98,10 +98,8 @@ paypal:
   mode: ${PAYPAL_MODE}
 
 payway:
-  client-id: ${PAYOS_CLIENT_ID}
-  api-key: ${PAYOS_API_KEY}
-  checksum-key: ${PAYOS_CHECKSUM_KEY}
-  log-level: ${PAYOS_LOG_LEVEL:NONE}
-  webhook-url: ${PAYOS_WEBHOOK_URL}
-  return-url: ${PAYOS_RETURN_URL}
-  cancel-url: ${PAYOS_CANCEL_URL}
+  service-url: ${PAYWAY_SERVICE_URL}
+  api-key: ${PAYWAY_CLIENT_ID}
+  verify-key: ${PAYWAY_CHECKSUM_KEY}
+  webhook-base-url: ${PAYWAY_WEBHOOK_BASE_URL}
+  return-url: ${PAYWAY_RETURN_URL}
