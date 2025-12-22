@@ -32,7 +32,7 @@ public class CreateContractRequest {
     private UUID agentId;
 
     @NotNull(message = "Contract type is required")
-    @Schema(description = "Type of contract: PURCHASE, RENTAL, or INVESTMENT", example = "PURCHASE")
+    @Schema(description = "Type of contract: PURCHASE, RENTAL", example = "PURCHASE")
     private Constants.ContractTypeEnum contractType;
 
     @NotNull(message = "Start date is required")

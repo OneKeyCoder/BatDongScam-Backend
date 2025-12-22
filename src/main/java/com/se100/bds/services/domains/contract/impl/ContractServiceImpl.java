@@ -391,7 +391,6 @@ public class ContractServiceImpl implements ContractService {
         String prefix = switch (type) {
             case PURCHASE -> "PUR";
             case RENTAL -> "RNT";
-            case INVESTMENT -> "INV";
         };
         
         String timestamp = String.valueOf(System.currentTimeMillis()).substring(5);
