@@ -142,7 +142,7 @@ public class AppExceptionHandler {
     @ExceptionHandler(Exception.class)
     public final ResponseEntity<ErrorResponse> handleAllExceptions(final Exception e) {
         log.error("Exception: {}", ExceptionUtils.getStackTrace(e));
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Server cooked!!!");
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Server cooked! Exception: " + e.getMessage());
     }
 
     /**
