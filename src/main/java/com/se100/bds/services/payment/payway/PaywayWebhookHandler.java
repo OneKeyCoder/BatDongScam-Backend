@@ -5,9 +5,11 @@ import com.se100.bds.models.entities.contract.Payment;
 import com.se100.bds.repositories.domains.contract.PaymentRepository;
 import com.se100.bds.services.payment.payway.dto.PaywayWebhookEvent;
 import com.se100.bds.services.payment.payway.dto.PaywayWebhookPaymentObject;
+import com.se100.bds.services.payment.payway.dto.PaywayWebhookPayoutObject;
 import com.se100.bds.utils.Constants.PaymentStatusEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +50,7 @@ public class PaywayWebhookHandler {
                 return;
             }
 
-            PaymentStatusEnum newStatus = mapToInternalStatus(type);
+            PaymentStatusEnum newStatus = mapPaymentEventToInternalStatus(type);
             if (newStatus == null) {
                 log.info("Payway webhook: ignoring unsupported event type {}", type);
                 return;
@@ -68,15 +70,55 @@ public class PaywayWebhookHandler {
 
         } catch (Exception e) {
             // Best-effort: don't throw to Payway, just log.
-            log.error("Payway webhook: failed to process event", e);
+            log.error("Payway webhook: failed to process payment event", e);
         }
     }
 
-    private static PaymentStatusEnum mapToInternalStatus(String eventType) {
+    /**
+     * Best-effort payout webhook handling.
+     * <p>
+     * We currently don't have a domain Payout aggregate/repository in this codebase,
+     * so we just parse + log for now.
+     */
+    public void handlePayoutEvent(String rawBody) {
+        try {
+            PaywayWebhookEvent<PaywayWebhookPayoutObject> event = objectMapper.readValue(
+                    rawBody.getBytes(StandardCharsets.UTF_8),
+                    objectMapper.getTypeFactory().constructParametricType(PaywayWebhookEvent.class, PaywayWebhookPayoutObject.class)
+            );
+
+            if (event == null || event.getData() == null || event.getData().getObject() == null) {
+                log.warn("Payway webhook (payout): missing data.object");
+                return;
+            }
+
+            String type = event.getType();
+            PaywayWebhookPayoutObject obj = event.getData().getObject();
+            String error = event.getData().getError();
+
+            if (type == null || obj.getId() == null) {
+                log.warn("Payway webhook (payout): missing type or payout id");
+                return;
+            }
+
+            // Until we have a payout entity, we just log the incoming callback.
+            if (error != null && !error.isBlank()) {
+                log.warn("Payway webhook (payout): {} for payout {}, error={}", type, obj.getId(), error);
+            } else {
+                log.info("Payway webhook (payout): {} for payout {} (status={})", type, obj.getId(), obj.getStatus());
+            }
+
+        } catch (Exception e) {
+            log.error("Payway webhook: failed to process payout event", e);
+        }
+    }
+
+    private static @NotNull PaymentStatusEnum mapPaymentEventToInternalStatus(String eventType) {
         return switch (eventType) {
             case "payment.succeeded" -> PaymentStatusEnum.SUCCESS;
-            case "payment.failed", "payment.canceled" -> PaymentStatusEnum.FAILED;
-            default -> null;
+            // New docs: payment.canceled; keep payment.failed for backwards compat.
+            case "payment.canceled", "payment.failed" -> PaymentStatusEnum.FAILED;
+            default -> throw new IllegalArgumentException("Unsupported event type: " + eventType);
         };
     }
 }
