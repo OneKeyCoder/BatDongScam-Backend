@@ -1,5 +1,6 @@
 package com.se100.bds.services.dtos.results;
 
+import com.se100.bds.utils.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,6 +20,7 @@ public class PropertyCard {
     private LocalDateTime updatedAt;
     private String title;
     private String thumbnailUrl;
+    private Constants.TransactionTypeEnum transactionType;
     private boolean isFavorite;
     private int numberOfImages;
     private String district;
