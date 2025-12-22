@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -44,7 +45,7 @@ public class PaywayService implements PaymentGatewayService {
 
     private volatile RestClient restClient;
 
-    private static String safeReadBody(org.springframework.http.client.ClientHttpResponse response) {
+    private static String safeReadBody(ClientHttpResponse response) {
         try {
             return new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
         } catch (Exception ignored) {
@@ -60,7 +61,7 @@ public class PaywayService implements PaymentGatewayService {
         return "Payway returned HTTP " + status + ": " + trimmed;
     }
 
-    private static void throwPayway(org.springframework.http.HttpStatusCode status, String body) {
+    private static void throwPayway(HttpStatusCode status, String body) {
         int code = status.value();
         String message = summarizePaywayError(code, body);
 
