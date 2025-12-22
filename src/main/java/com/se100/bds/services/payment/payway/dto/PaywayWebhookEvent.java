@@ -28,6 +28,10 @@ public class PaywayWebhookEvent<T> {
     public static class DataWrapper<T> {
         @JsonProperty("object")
         private T object;
+
+        /**
+         * Optional error message (present for some failed payout events, etc.).
+         */
+        private String error;
     }
 }
-
