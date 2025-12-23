@@ -47,16 +47,6 @@ services:
     networks:
       - bds-project-network
 
-  # mailhog:
-  #   image: mailhog/mailhog:latest
-  #   container_name: template-mailhog
-  #   restart: always
-  #   env_file: .env
-  #   ports:
-  #     - '1025:1025'
-  #   networks:
-  #     - template-network
-
 volumes:
   postgres-data:
   mongodb-data:
