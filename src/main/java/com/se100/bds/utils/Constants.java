@@ -184,7 +184,6 @@ public final class Constants {
         FULL_PAY("FULL_PAY"),
         MONTHLY("MONTHLY"),
         PENALTY("PENALTY"),
-        REFUND("REFUND"),
         MONEY_SALE("MONEY_SALE"),
         MONEY_RENTAL("MONEY_RENTAL"),
         SALARY("SALARY"),

@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -129,13 +130,13 @@ public class SaleAgentRankingScheduler {
                 BigDecimal newAvgRating = (individualSalesAgentPerformanceCareer.getAvgRating()
                         .multiply(BigDecimal.valueOf(monthCount - 1))
                         .add(currentMonthData.getAvgRating()))
-                        .divide(BigDecimal.valueOf(monthCount), 2, BigDecimal.ROUND_HALF_UP);
+                        .divide(BigDecimal.valueOf(monthCount), 2, RoundingMode.HALF_UP);
                 individualSalesAgentPerformanceCareer.setAvgRating(newAvgRating);
 
                 BigDecimal newCustomerSatisfactionAvg = (individualSalesAgentPerformanceCareer.getCustomerSatisfactionAvg()
                         .multiply(BigDecimal.valueOf(monthCount - 1))
                         .add(currentMonthData.getMonthCustomerSatisfactionAvg()))
-                        .divide(BigDecimal.valueOf(monthCount), 2, BigDecimal.ROUND_HALF_UP);
+                        .divide(BigDecimal.valueOf(monthCount), 2, RoundingMode.HALF_UP);
                 individualSalesAgentPerformanceCareer.setCustomerSatisfactionAvg(newCustomerSatisfactionAvg);
             }
         }

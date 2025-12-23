@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -74,14 +75,23 @@ public class CustomerRankingScheduler {
         // Calculate avg_spending_benchmark
         List<IndividualCustomerPotentialMonth> allMonthData = individualCustomerPotentialMonthRepository.findAll().stream()
                 .filter(m -> m.getMonth().equals(individualCustomerPotentialMonth.getMonth()) && m.getYear().equals(individualCustomerPotentialMonth.getYear()))
-                .collect(Collectors.toList());
+                .toList();
         BigDecimal totalSpending = allMonthData.stream()
                 .map(IndividualCustomerPotentialMonth::getMonthSpending)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         int totalCustomers = allMonthData.size();
-        BigDecimal avgSpendingBenchmark = totalCustomers > 0 ? totalSpending.divide(BigDecimal.valueOf(totalCustomers), 2, BigDecimal.ROUND_HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgSpendingBenchmark = totalCustomers > 0 ? totalSpending.divide(BigDecimal.valueOf(totalCustomers), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
         // Calculate scores
+        int leadScore = calculateLeadScore(individualCustomerPotentialMonth, avgSpendingBenchmark, extraPoint);
+
+        // Set lead_score and tier
+        individualCustomerPotentialMonth.setLeadScore(leadScore);
+        Constants.CustomerTierEnum newTier = Constants.CustomerTierEnum.get(RankingUtil.getCustomerTier(leadScore));
+        individualCustomerPotentialMonth.setCustomerTier(newTier);
+    }
+
+    private static int calculateLeadScore(IndividualCustomerPotentialMonth individualCustomerPotentialMonth, BigDecimal avgSpendingBenchmark, int extraPoint) {
         int viewingAttendedScore = individualCustomerPotentialMonth.getMonthViewingsRequested() > 0 ?
                 (int) ((double) individualCustomerPotentialMonth.getMonthViewingAttended() / individualCustomerPotentialMonth.getMonthViewingsRequested() * 100) : 0;
 
@@ -91,19 +101,14 @@ public class CustomerRankingScheduler {
                 (int) ((double) totalContractsSigned / individualCustomerPotentialMonth.getMonthViewingAttended() * 100) : 0;
 
         BigDecimal spendingScore = avgSpendingBenchmark.compareTo(BigDecimal.ZERO) > 0 ?
-                individualCustomerPotentialMonth.getMonthSpending().divide(avgSpendingBenchmark, 2, BigDecimal.ROUND_HALF_UP).multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO;
+                individualCustomerPotentialMonth.getMonthSpending().divide(avgSpendingBenchmark, 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO;
         spendingScore = spendingScore.min(BigDecimal.valueOf(150));
 
         int contractScore = Math.min(totalContractsSigned * 25, 100);
 
         // Calculate lead_score
         double leadScoreDouble = (0.2 * viewingAttendedScore) + (0.2 * conversionScore) + (0.4 * spendingScore.doubleValue()) + (0.2 * contractScore) + extraPoint;
-        int leadScore = (int) leadScoreDouble;
-
-        // Set lead_score and tier
-        individualCustomerPotentialMonth.setLeadScore(leadScore);
-        Constants.CustomerTierEnum newTier = Constants.CustomerTierEnum.get(RankingUtil.getCustomerTier(leadScore));
-        individualCustomerPotentialMonth.setCustomerTier(newTier);
+        return (int) leadScoreDouble;
     }
 
     private void updatePointAll(IndividualCustomerPotentialAll individualCustomerPotentialAll) {

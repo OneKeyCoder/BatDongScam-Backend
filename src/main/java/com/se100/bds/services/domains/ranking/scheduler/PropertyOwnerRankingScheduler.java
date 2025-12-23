@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -75,7 +76,7 @@ public class PropertyOwnerRankingScheduler {
         // Calculate avg_transaction_benchmark and avg_revenue_benchmark
         List<IndividualPropertyOwnerContributionMonth> allMonthData = individualPropertyOwnerContributionMonthRepository.findAll().stream()
                 .filter(m -> m.getMonth().equals(individualPropertyOwnerContributionMonth.getMonth()) && m.getYear().equals(individualPropertyOwnerContributionMonth.getYear()))
-                .collect(Collectors.toList());
+                .toList();
 
         int totalTransactions = allMonthData.stream()
                 .mapToInt(m -> m.getMonthTotalPropertiesSold() + (m.getMonthTotalForRents() != null ? m.getMonthTotalForRents() : 0))
@@ -86,7 +87,7 @@ public class PropertyOwnerRankingScheduler {
         BigDecimal totalRevenue = allMonthData.stream()
                 .map(IndividualPropertyOwnerContributionMonth::getMonthContributionValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal avgRevenueBenchmark = totalOwners > 0 ? totalRevenue.divide(BigDecimal.valueOf(totalOwners), 2, BigDecimal.ROUND_HALF_UP) : BigDecimal.ZERO;
+        BigDecimal avgRevenueBenchmark = totalOwners > 0 ? totalRevenue.divide(BigDecimal.valueOf(totalOwners), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
         // Calculate scores
         double propertyUtilizationScore = individualPropertyOwnerContributionMonth.getMonthTotalProperties() > 0 ?
@@ -98,7 +99,7 @@ public class PropertyOwnerRankingScheduler {
                 avgTransactionBenchmark * 100) : 0;
 
         BigDecimal revenueScore = avgRevenueBenchmark.compareTo(BigDecimal.ZERO) > 0 ?
-                individualPropertyOwnerContributionMonth.getMonthContributionValue().divide(avgRevenueBenchmark, 2, BigDecimal.ROUND_HALF_UP).multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO;
+                individualPropertyOwnerContributionMonth.getMonthContributionValue().divide(avgRevenueBenchmark, 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO;
         revenueScore = revenueScore.min(BigDecimal.valueOf(150));
 
         // Calculate contribution_point
