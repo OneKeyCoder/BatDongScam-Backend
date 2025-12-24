@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +72,7 @@ public class PaymentDummyData {
                             .property(contract.getProperty())
                             .saleAgent(contract.getAgent())
                             .paymentType(Constants.PaymentTypeEnum.MONTHLY)
-                            .amount(contract.getRemainingAmount().divide(BigDecimal.valueOf(months), 2, BigDecimal.ROUND_HALF_UP))
+                            .amount(contract.getRemainingAmount().divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP))
                             .dueDate(dueDate)
                             .paidDate(paidDate)
                             .installmentNumber(i + 1)

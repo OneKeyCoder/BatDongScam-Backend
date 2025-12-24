@@ -404,14 +404,6 @@ public class PaymentServiceImpl implements PaymentService {
             return buildCompanyParty();
         }
 
-        if (type == PaymentTypeEnum.REFUND) {
-            if (isOwnerRefundCollection(payment)) {
-                PartyInfo owner = buildOwnerParty(property);
-                return owner != null ? owner : buildCompanyParty();
-            }
-            return buildCompanyParty();
-        }
-
         if (isOwnerPayout(payment)) {
             return buildCompanyParty();
         }
@@ -432,14 +424,6 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (type == PaymentTypeEnum.SERVICE_FEE) {
             return buildCompanyParty();
-        }
-
-        if (type == PaymentTypeEnum.REFUND) {
-            if (isOwnerRefundCollection(payment)) {
-                return buildCompanyParty();
-            }
-            PartyInfo customer = buildCustomerParty(contract);
-            return customer != null ? customer : buildCompanyParty();
         }
 
         if (isOwnerPayout(payment)) {
@@ -476,12 +460,6 @@ public class PaymentServiceImpl implements PaymentService {
         }
         User user = agent.getUser();
         return new PartyInfo(user.getId(), user.getFirstName(), user.getLastName(), "SALESAGENT", user.getPhoneNumber());
-    }
-
-    private boolean isOwnerRefundCollection(Payment payment) {
-        return payment.getPaymentType() == PaymentTypeEnum.REFUND
-                && payment.getPaymentMethod() != null
-                && payment.getPaymentMethod().equalsIgnoreCase(PAYOS_METHOD);
     }
 
     private boolean isOwnerPayout(Payment payment) {
