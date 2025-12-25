@@ -1,10 +1,9 @@
 package com.se100.bds.services.domains.payment;
 
-import com.se100.bds.dtos.requests.payment.CreateBonusPaymentRequest;
-import com.se100.bds.dtos.requests.payment.CreateSalaryPaymentRequest;
 import com.se100.bds.dtos.requests.payment.UpdatePaymentStatusRequest;
 import com.se100.bds.dtos.responses.payment.PaymentDetailResponse;
 import com.se100.bds.dtos.responses.payment.PaymentListItem;
+import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.utils.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,16 +42,11 @@ public interface PaymentService {
      * Update payment status (accountant marks as paid externally)
      */
     PaymentDetailResponse updatePaymentStatus(UUID paymentId, UpdatePaymentStatusRequest request);
-    
+
     /**
-     * Create salary payment for sales agent
+     * Create service fee payment (for property listing)
      */
-    PaymentDetailResponse createSalaryPayment(CreateSalaryPaymentRequest request);
-    
-    /**
-     * Create bonus payment for sales agent
-     */
-    PaymentDetailResponse createBonusPayment(CreateBonusPaymentRequest request);
+    PaymentDetailResponse createServiceFeePayment(Property property);
 
     /**
      * Process a Payway webhook event (raw request body JSON string).

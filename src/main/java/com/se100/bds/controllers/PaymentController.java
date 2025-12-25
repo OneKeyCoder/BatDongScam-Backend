@@ -1,8 +1,6 @@
 package com.se100.bds.controllers;
 
 import com.se100.bds.controllers.base.AbstractBaseController;
-import com.se100.bds.dtos.requests.payment.CreateBonusPaymentRequest;
-import com.se100.bds.dtos.requests.payment.CreateSalaryPaymentRequest;
 import com.se100.bds.dtos.requests.payment.UpdatePaymentStatusRequest;
 import com.se100.bds.dtos.responses.PageResponse;
 import com.se100.bds.dtos.responses.SingleResponse;
@@ -153,33 +151,5 @@ public class PaymentController extends AbstractBaseController {
     ) {
         PaymentDetailResponse payment = paymentService.updatePaymentStatus(paymentId, request);
         return responseFactory.successSingle(payment, "Payment status updated successfully");
-    }
-
-    @PostMapping("/salary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT')")
-    @Operation(
-            summary = "Create salary payment",
-            description = "Creates a salary payment record for a sales agent (manual payout flow).",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
-    )
-    public ResponseEntity<SingleResponse<PaymentDetailResponse>> createSalaryPayment(
-            @Valid @RequestBody CreateSalaryPaymentRequest request
-    ) {
-        PaymentDetailResponse payment = paymentService.createSalaryPayment(request);
-        return responseFactory.successSingle(payment, "Salary payment created successfully");
-    }
-
-    @PostMapping("/bonus")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT')")
-    @Operation(
-            summary = "Create bonus payment",
-            description = "Creates a bonus payment record for a sales agent (manual payout flow).",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
-    )
-    public ResponseEntity<SingleResponse<PaymentDetailResponse>> createBonusPayment(
-            @Valid @RequestBody CreateBonusPaymentRequest request
-    ) {
-        PaymentDetailResponse payment = paymentService.createBonusPayment(request);
-        return responseFactory.successSingle(payment, "Bonus payment created successfully");
     }
 }

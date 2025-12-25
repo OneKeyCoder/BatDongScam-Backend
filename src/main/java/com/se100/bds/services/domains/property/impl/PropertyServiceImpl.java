@@ -25,6 +25,7 @@ import com.se100.bds.repositories.dtos.DocumentProjection;
 import com.se100.bds.repositories.dtos.MediaProjection;
 import com.se100.bds.repositories.dtos.PropertyCardProtection;
 import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
+import com.se100.bds.services.domains.payment.PaymentService;
 import com.se100.bds.services.domains.property.PropertyService;
 import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.domains.search.SearchService;
@@ -35,6 +36,7 @@ import com.se100.bds.utils.Constants;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -81,6 +83,7 @@ public class PropertyServiceImpl implements PropertyService {
     private final SearchService searchService;
     private final RankingService rankingService;
     private final CloudinaryService cloudinaryService;
+    private final PaymentService paymentService;
 
     @Override
     public Page<Property> getAll(Pageable pageable) {
@@ -273,17 +276,22 @@ public class PropertyServiceImpl implements PropertyService {
     @Override
     @Transactional(readOnly = true)
     public List<Property> getAllByUserIdAndStatus(UUID ownerId, UUID customerId, UUID salesAgentId, List<Constants.PropertyStatusEnum> statuses) {
-        if (customerId == null) {
-            if (salesAgentId == null) {
-                return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByOwner_Id(ownerId) : propertyRepository.findAllByOwner_IdAndStatusIn(ownerId, statuses);
-            }
-            else if (ownerId == null) {
-                return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByAssignedAgent_Id(salesAgentId) : propertyRepository.findAllByAssignedAgent_IdAndStatusIn(salesAgentId, statuses);
-            }
-            return statuses == null || statuses.isEmpty() ? propertyRepository.findAllByOwner_IdAndAssignedAgent_Id(ownerId, salesAgentId) : propertyRepository.findAllByOwner_IdAndAssignedAgent_IdAndStatusIn(ownerId, salesAgentId, statuses);
-        } else {
+        if (customerId != null) {
             return propertyRepository.findAllByCustomer_IdAndStatusIn(customerId);
         }
+        if (salesAgentId == null) {
+            if (statuses == null || statuses.isEmpty())
+                return propertyRepository.findAllByOwner_Id(ownerId);
+            return propertyRepository.findAllByOwner_IdAndStatusIn(ownerId, statuses);
+        }
+        if (ownerId == null) {
+            if (statuses == null || statuses.isEmpty())
+                return propertyRepository.findAllByAssignedAgent_Id(salesAgentId);
+            return propertyRepository.findAllByAssignedAgent_IdAndStatusIn(salesAgentId, statuses);
+        }
+        if (statuses == null || statuses.isEmpty())
+            return propertyRepository.findAllByOwner_IdAndAssignedAgent_Id(ownerId, salesAgentId);
+        return propertyRepository.findAllByOwner_IdAndAssignedAgent_IdAndStatusIn(ownerId, salesAgentId, statuses);
     }
 
     @Override
@@ -372,9 +380,6 @@ public class PropertyServiceImpl implements PropertyService {
             throw new IllegalStateException("Cannot update a deleted property");
         }
 
-        boolean priceChanged = hasPriceChanged(property.getPriceAmount(), request.getPriceAmount());
-        boolean priceIncreased = isPriceIncreased(property.getPriceAmount(), request.getPriceAmount());
-
         PropertyOwner owner = resolveOwnerForUpdate(isAdmin, request.getOwnerId(), property.getOwner());
         PropertyType propertyType = propertyTypeRepository.findById(request.getPropertyTypeId())
                 .orElseThrow(() -> new NotFoundException("Property type not found with id: " + request.getPropertyTypeId()));
@@ -393,9 +398,11 @@ public class PropertyServiceImpl implements PropertyService {
                 property.setApprovedAt(LocalDateTime.now());
             }
         } else {
-            reconcileStatusAfterOwnerUpdate(property, priceChanged, priceIncreased);
+            // always set back to pending if owner updates
+            property.setStatus(Constants.PropertyStatusEnum.PENDING);
         }
 
+        //! WARN: this code is trash. this 100% will cause a bug related to media management or when admin refuses to approve
         ensureMediaCollection(property);
         removeMediaFiles(property, request.getMediaIdsToRemove());
         addMediaFiles(property, mediaFiles);
@@ -421,33 +428,7 @@ public class PropertyServiceImpl implements PropertyService {
         Constants.PropertyStatusEnum targetStatus = request.getStatus();
 
         if (isAdmin) {
-            if (!ADMIN_STATUS_UPDATABLE.contains(targetStatus)) {
-                throw new IllegalArgumentException("Unsupported status update: " + targetStatus);
-            }
 
-            if (targetStatus == Constants.PropertyStatusEnum.AVAILABLE && hasOutstandingServiceFee(property)) {
-                throw new IllegalStateException("Cannot mark property as AVAILABLE while service fee payment is outstanding");
-            }
-
-            switch (targetStatus) {
-                case APPROVED -> property.setApprovedAt(LocalDateTime.now());
-                case PENDING, REJECTED -> {
-                    property.setApprovedAt(null);
-                    property.setAssignedAgent(null);
-                }
-                case AVAILABLE -> {
-                    if (property.getApprovedAt() == null) {
-                        property.setApprovedAt(LocalDateTime.now());
-                    }
-                }
-                default -> {
-                }
-            }
-
-            property.setStatus(targetStatus);
-            Property saved = propertyRepository.save(property);
-            log.info("Admin updated property {} status to {}", saved.getId(), targetStatus);
-            return propertyMapper.mapTo(saved, PropertyDetails.class);
         }
 
         if (isOwner && property.getOwner().getId().equals(currentUser.getId())) {
@@ -471,6 +452,40 @@ public class PropertyServiceImpl implements PropertyService {
 
         throw new AccessDeniedException("You do not have permission to modify this property");
     }
+
+    PropertyDetails handleAdminUpdateStatus(Property property, Constants.PropertyStatusEnum targetStatus) {
+        if (!ADMIN_STATUS_UPDATABLE.contains(targetStatus)) {
+            throw new IllegalArgumentException("Unsupported status update: " + targetStatus);
+        }
+
+        if (targetStatus == Constants.PropertyStatusEnum.AVAILABLE && hasOutstandingServiceFee(property)) {
+            throw new IllegalStateException("Cannot mark property as AVAILABLE while service fee payment is outstanding");
+        }
+
+        switch (targetStatus) {
+            case APPROVED -> {
+                property.setApprovedAt(LocalDateTime.now());
+                if (hasOutstandingServiceFee(property))
+                    paymentService.createServiceFeePayment(property);
+            }
+            case PENDING, REJECTED -> {
+                property.setApprovedAt(null);
+                property.setAssignedAgent(null);
+            }
+            case AVAILABLE -> {
+                if (property.getApprovedAt() == null) {
+                    property.setApprovedAt(LocalDateTime.now());
+                }
+            }
+            default -> {}
+        }
+
+        property.setStatus(targetStatus);
+        Property saved = propertyRepository.save(property);
+        log.info("Admin updated property {} status to {}", saved.getId(), targetStatus);
+        return propertyMapper.mapTo(saved, PropertyDetails.class);
+    }
+
 
     @Override
     @Transactional
@@ -574,6 +589,7 @@ public class PropertyServiceImpl implements PropertyService {
                 cloudinaryService.deleteFile(propertyType.getAvatarUrl());
             } catch (IOException e) {
                 log.error("Failed to delete avatar from Cloudinary: {}", e.getMessage());
+                throw e; // rethrow to fail request
             }
         }
 
@@ -682,14 +698,7 @@ public class PropertyServiceImpl implements PropertyService {
         return propertyRepository.countByPropertyType_Id(propertyTypeId);
     }
 
-    private boolean hasPriceChanged(BigDecimal currentPrice, BigDecimal newPrice) {
-        return bigDecimalChanged(currentPrice, newPrice);
-    }
-
-    private boolean isPriceIncreased(BigDecimal currentPrice, BigDecimal newPrice) {
-        if (currentPrice == null || newPrice == null) {
-            return false;
-        }
+    private boolean isPriceIncreased(@NotNull BigDecimal currentPrice, @NotNull BigDecimal newPrice) {
         return newPrice.compareTo(currentPrice) > 0;
     }
 
@@ -729,9 +738,6 @@ public class PropertyServiceImpl implements PropertyService {
         }
 
         BigDecimal collected = property.getServiceFeeCollectedAmount();
-        if (collected == null) {
-            return true;
-        }
 
         return serviceFeeAmount.compareTo(collected) > 0;
     }
@@ -766,23 +772,17 @@ public class PropertyServiceImpl implements PropertyService {
         property.setAmenities(request.getAmenities());
     }
 
-    private void reconcileStatusAfterOwnerUpdate(Property property,
-                                                 boolean priceChanged,
-                                                 boolean priceIncreased) {
-        if (!priceChanged) {
-            return;
-        }
+    private void reconcileStatusAfterOwnerUpdate(Property property, boolean priceChanged, boolean priceIncreased) {
+        property.setStatus(Constants.PropertyStatusEnum.PENDING);
 
-        reconcileStatusAfterPricingChange(property, priceChanged, priceIncreased);
-    }
-
-    private void reconcileStatusAfterPricingChange(Property property, boolean priceChanged, boolean priceIncreased) {
         if (!priceChanged) {
             return;
         }
 
         if (priceIncreased) {
             if (hasOutstandingServiceFee(property)) {
+                // create payment requiring the outstanding amount
+            } else {
                 Constants.PropertyStatusEnum currentStatus = property.getStatus();
                 if (currentStatus == Constants.PropertyStatusEnum.AVAILABLE
                         || currentStatus == Constants.PropertyStatusEnum.APPROVED) {
@@ -796,6 +796,7 @@ public class PropertyServiceImpl implements PropertyService {
                 && property.getStatus() == Constants.PropertyStatusEnum.APPROVED) {
             property.setStatus(Constants.PropertyStatusEnum.AVAILABLE);
         }
+        property.setStatus(Constants.PropertyStatusEnum.PENDING);
     }
 
     private BigDecimal computeServiceFee(BigDecimal priceAmount, BigDecimal commissionRate) {
@@ -806,7 +807,7 @@ public class PropertyServiceImpl implements PropertyService {
     }
 
     private void addMediaFiles(Property property, MultipartFile[] mediaFiles) {
-        if (mediaFiles == null || mediaFiles.length == 0) {
+        if (mediaFiles == null) {
             return;
         }
 

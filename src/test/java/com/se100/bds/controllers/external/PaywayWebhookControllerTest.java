@@ -1,10 +1,9 @@
 package com.se100.bds.controllers.external;
 
-import com.se100.bds.dtos.requests.payment.CreateBonusPaymentRequest;
-import com.se100.bds.dtos.requests.payment.CreateSalaryPaymentRequest;
 import com.se100.bds.dtos.requests.payment.UpdatePaymentStatusRequest;
 import com.se100.bds.dtos.responses.payment.PaymentDetailResponse;
 import com.se100.bds.dtos.responses.payment.PaymentListItem;
+import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.services.domains.payment.PaymentService;
 import com.se100.bds.services.payment.payway.PaywayWebhookSignatureVerifier;
 import com.se100.bds.utils.Constants.PaymentStatusEnum;
@@ -71,12 +70,7 @@ class PaywayWebhookControllerTest {
                 }
 
                 @Override
-                public PaymentDetailResponse createSalaryPayment(CreateSalaryPaymentRequest request) {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public PaymentDetailResponse createBonusPayment(CreateBonusPaymentRequest request) {
+                public PaymentDetailResponse createServiceFeePayment(Property property) {
                     throw new UnsupportedOperationException();
                 }
 
