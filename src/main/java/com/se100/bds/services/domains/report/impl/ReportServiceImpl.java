@@ -664,9 +664,20 @@ public class ReportServiceImpl implements ReportService {
 
         if (year > currentYear) return null;
 
-        // If current year, init to get latest data
+        // If current year, init all months from 1 to current month
         if (year == currentYear) {
-            financialReportScheduler.initFinancialReportData(currentMonth, year).join();
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (int month = 1; month <= currentMonth; month++) {
+                futures.add(financialReportScheduler.initFinancialReportData(month, year));
+            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        } else {
+            // If past year, init all 12 months
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (int month = 1; month <= 12; month++) {
+                futures.add(financialReportScheduler.initFinancialReportData(month, year));
+            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         }
 
         List<FinancialReport> financialReports = financialReportRepository.findAllByBaseReportData_Year(year);
