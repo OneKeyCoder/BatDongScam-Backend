@@ -10,6 +10,8 @@ import com.se100.bds.dtos.responses.property.PropertyDetails;
 import com.se100.bds.dtos.responses.property.PropertyTypeResponse;
 import com.se100.bds.exceptions.NotFoundException;
 import com.se100.bds.mappers.PropertyMapper;
+import com.se100.bds.models.entities.document.DocumentType;
+import com.se100.bds.models.entities.document.IdentificationDocument;
 import com.se100.bds.models.entities.location.Ward;
 import com.se100.bds.models.entities.property.Media;
 import com.se100.bds.models.entities.property.Property;
@@ -17,6 +19,7 @@ import com.se100.bds.models.entities.property.PropertyType;
 import com.se100.bds.models.entities.user.PropertyOwner;
 import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.models.entities.user.User;
+import com.se100.bds.repositories.domains.document.DocumentTypeRepository;
 import com.se100.bds.repositories.domains.location.WardRepository;
 import com.se100.bds.repositories.domains.property.PropertyRepository;
 import com.se100.bds.repositories.domains.property.PropertyTypeRepository;
@@ -76,6 +79,7 @@ public class PropertyServiceImpl implements PropertyService {
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyOwnerRepository propertyOwnerRepository;
     private final WardRepository wardRepository;
+    private final DocumentTypeRepository documentTypeRepository;
     private final PropertyMapper propertyMapper;
     private final UserService userService;
     private final SearchService searchService;
@@ -288,7 +292,7 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public PropertyDetails createProperty(CreatePropertyRequest request, MultipartFile[] mediaFiles) {
+    public PropertyDetails createProperty(CreatePropertyRequest request, MultipartFile[] mediaFiles, MultipartFile[] documents) {
         User currentUser = userService.getUser();
         boolean isAdmin = isAdmin(currentUser);
         boolean isOwner = isPropertyOwner(currentUser);
@@ -335,9 +339,11 @@ public class PropertyServiceImpl implements PropertyService {
             .build();
 
         ensureMediaCollection(property);
+        ensureDocumentCollection(property);
         Property persisted = propertyRepository.save(property);
 
         addMediaFiles(persisted, mediaFiles);
+        addDocumentFiles(persisted, documents);
 
         Property saved = propertyRepository.save(persisted);
         if (isAdmin) {
@@ -356,7 +362,7 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public PropertyDetails updateProperty(UUID propertyId, UpdatePropertyRequest request, MultipartFile[] mediaFiles) {
+    public PropertyDetails updateProperty(UUID propertyId, UpdatePropertyRequest request, MultipartFile[] mediaFiles, MultipartFile[] documents) {
         User currentUser = userService.getUser();
         boolean isAdmin = isAdmin(currentUser);
         boolean isOwner = isPropertyOwner(currentUser);
@@ -397,8 +403,11 @@ public class PropertyServiceImpl implements PropertyService {
         }
 
         ensureMediaCollection(property);
+        ensureDocumentCollection(property);
         removeMediaFiles(property, request.getMediaIdsToRemove());
+        removeDocumentFiles(property, request.getDocumentIdsToRemove());
         addMediaFiles(property, mediaFiles);
+        addDocumentFiles(property, documents);
 
         Property saved = propertyRepository.save(property);
         return propertyMapper.mapTo(saved, PropertyDetails.class);
@@ -896,5 +905,87 @@ public class PropertyServiceImpl implements PropertyService {
         }
         return propertyOwnerRepository.findById(ownerIdFromRequest)
                 .orElseThrow(() -> new NotFoundException("Property owner not found with id: " + ownerIdFromRequest));
+    }
+
+    private void addDocumentFiles(Property property, MultipartFile[] documents) {
+        if (documents == null || documents.length == 0) {
+            return;
+        }
+
+        // Get or create default document type for general property documents
+        DocumentType defaultDocumentType = getOrCreateDefaultDocumentType();
+
+        for (MultipartFile documentFile : documents) {
+            if (documentFile == null || documentFile.isEmpty()) {
+                continue;
+            }
+            try {
+                String fileUrl = cloudinaryService.uploadFile(documentFile, buildDocumentFolderPath(property.getId()));
+                String mimeType = documentFile.getContentType() != null ? documentFile.getContentType() : "application/octet-stream";
+                
+                IdentificationDocument document = IdentificationDocument.builder()
+                        .documentType(defaultDocumentType)
+                        .property(property)
+                        .documentNumber("AUTO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                        .documentName(documentFile.getOriginalFilename() != null ? documentFile.getOriginalFilename() : documentFile.getName())
+                        .filePath(fileUrl)
+                        .verificationStatus(Constants.VerificationStatusEnum.PENDING)
+                        .build();
+                
+                property.getDocuments().add(document);
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to upload property document", e);
+            }
+        }
+    }
+
+    private void removeDocumentFiles(Property property, List<UUID> documentIds) {
+        if (documentIds == null || documentIds.isEmpty() || property.getDocuments().isEmpty()) {
+            return;
+        }
+
+        Iterator<IdentificationDocument> iterator = property.getDocuments().iterator();
+        while (iterator.hasNext()) {
+            IdentificationDocument document = iterator.next();
+            if (documentIds.contains(document.getId())) {
+                try {
+                    cloudinaryService.deleteFile(document.getFilePath());
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to delete property document", e);
+                }
+                iterator.remove();
+            }
+        }
+    }
+
+    private void ensureDocumentCollection(Property property) {
+        if (property.getDocuments() == null) {
+            property.setDocuments(new ArrayList<>());
+        }
+    }
+
+    private String buildDocumentFolderPath(UUID propertyId) {
+        return "properties/" + propertyId + "/documents";
+    }
+
+    private DocumentType getOrCreateDefaultDocumentType() {
+        // Try to find an existing non-compulsory document type first
+        List<DocumentType> nonCompulsoryTypes = documentTypeRepository.findAll().stream()
+                .filter(dt -> dt.getIsCompulsory() != null && !dt.getIsCompulsory())
+                .toList();
+        
+        if (!nonCompulsoryTypes.isEmpty()) {
+            return nonCompulsoryTypes.get(0);
+        }
+
+        // If no non-compulsory type exists, create a default "General Documents" type
+        DocumentType defaultType = DocumentType.builder()
+                .name("General Property Documents")
+                .description("General documents related to property listings")
+                .isCompulsory(false)
+                .documents(new ArrayList<>())
+                .build();
+        
+        return documentTypeRepository.save(defaultType);
     }
 }

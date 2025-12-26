@@ -57,10 +57,8 @@ import org.springframework.validation.FieldError;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -504,6 +502,7 @@ public class UserServiceImpl implements UserService {
         userProfileResponse.setDistrictName(user.getWard().getDistrict().getDistrictName());
         userProfileResponse.setCityId(user.getWard().getDistrict().getCity().getId());
         userProfileResponse.setCityName(user.getWard().getDistrict().getCity().getCityName());
+        userProfileResponse.setTier(rankingService.getCurrentTier(id, user.getRole()));
 
         switch (user.getRole()) {
             case ADMIN -> {
@@ -538,12 +537,9 @@ public class UserServiceImpl implements UserService {
                 return customerProfileResponse;
             }
             case SALESAGENT -> {
-                userProfileResponse.setTier(rankingService.getCurrentTier(id, Constants.RoleEnum.SALESAGENT));
-
                 return userProfileResponse;
             }
             case PROPERTY_OWNER -> {
-                userProfileResponse.setTier(rankingService.getCurrentTier(id, Constants.RoleEnum.PROPERTY_OWNER));
 
                 PropertyOwnerPropertyProfileResponse ownerPropertyProfileResponse = new PropertyOwnerPropertyProfileResponse();
                 List<Property> properties = propertyService.getAllByUserIdAndStatus(id, null, null,

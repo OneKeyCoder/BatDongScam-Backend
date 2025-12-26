@@ -263,6 +263,32 @@ public class PropertyMapper extends BaseMapper {
                         }
                         return null;
                     }).map(src -> src, PropertyDetails::setMediaList);
+
+                    // Map document list
+                    mapper.using(ctx -> {
+                        Property property = (Property) ctx.getSource();
+                        if (property.getDocuments() != null && !property.getDocuments().isEmpty()) {
+                            return property.getDocuments().stream()
+                                    .map(doc -> DocumentResponse.builder()
+                                            .id(doc.getId())
+                                            .documentTypeId(doc.getDocumentType() != null ? doc.getDocumentType().getId() : null)
+                                            .documentTypeName(doc.getDocumentType() != null ? doc.getDocumentType().getName() : null)
+                                            .documentNumber(doc.getDocumentNumber())
+                                            .documentName(doc.getDocumentName())
+                                            .filePath(doc.getFilePath())
+                                            .issueDate(doc.getIssueDate())
+                                            .expiryDate(doc.getExpiryDate())
+                                            .issuingAuthority(doc.getIssuingAuthority())
+                                            .verificationStatus(doc.getVerificationStatus() != null ? doc.getVerificationStatus().name() : null)
+                                            .verifiedAt(doc.getVerifiedAt())
+                                            .rejectionReason(doc.getRejectionReason())
+                                            .createdAt(doc.getCreatedAt())
+                                            .updatedAt(doc.getUpdatedAt())
+                                            .build())
+                                    .collect(Collectors.toList());
+                        }
+                        return null;
+                    }).map(src -> src, PropertyDetails::setDocumentList);
                 });
     }
 
