@@ -29,7 +29,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
 	       "LEFT JOIN FETCH w.district d " +
 	       "LEFT JOIN FETCH d.city " +
 	       "LEFT JOIN FETCH prop.propertyType " +
-	       "WHERE YEAR(p.paidDate) = :year AND MONTH(p.paidDate) = :month " +
+	       "WHERE YEAR(p.paidTime) = :year AND MONTH(p.paidTime) = :month " +
 	       "AND p.status = :successStatus " +
 	       "AND p.paymentType NOT IN :excludedTypes")
 	List<Payment> findRevenuePaymentsInMonth(
