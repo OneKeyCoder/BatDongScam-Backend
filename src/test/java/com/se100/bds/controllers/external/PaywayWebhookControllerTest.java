@@ -8,6 +8,7 @@ import com.se100.bds.services.domains.payment.PaymentService;
 import com.se100.bds.services.payment.payway.PaywayWebhookSignatureVerifier;
 import com.se100.bds.utils.Constants.PaymentStatusEnum;
 import com.se100.bds.utils.Constants.PaymentTypeEnum;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -56,6 +57,11 @@ class PaywayWebhookControllerTest {
                         LocalDate paidDateTo,
                         Boolean overdue
                 ) {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public Page<PaymentListItem> getPaymentsOfProperty(Pageable pageable, @NotNull UUID propertyId) {
                     throw new UnsupportedOperationException();
                 }
 

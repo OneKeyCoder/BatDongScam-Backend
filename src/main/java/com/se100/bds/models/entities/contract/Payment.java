@@ -31,8 +31,8 @@ public class Payment extends AbstractBaseEntity {
     private Property property;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sale_agent_id")
-    private SaleAgent saleAgent;
+    @JoinColumn(name = "payer_user_id")
+    private User payer;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_type", nullable = false)

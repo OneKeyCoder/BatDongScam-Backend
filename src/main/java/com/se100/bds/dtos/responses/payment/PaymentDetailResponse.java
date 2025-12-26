@@ -21,6 +21,7 @@ public class PaymentDetailResponse {
 
     private String paymentType;
     private String status;
+    private PaymentPayerResponse payer;
     private BigDecimal amount;
     private BigDecimal penaltyAmount;
     private LocalDate dueDate;
@@ -29,39 +30,15 @@ public class PaymentDetailResponse {
     private String paymentMethod;
     private String transactionReference;
     private String notes;
-    
-    // Calculated fields
-    private Long overdueDays;
-    private Boolean penaltyApplied;
-    
-    // Payer info
-    private UUID payerId;
-    private String payerFirstName;
-    private String payerLastName;
-    private String payerRole;
-    private String payerPhone;
-    
-    // Payee info
-    private UUID payeeId;
-    private String payeeFirstName;
-    private String payeeLastName;
-    private String payeeRole;
-    private String payeePhone;
-    
-    // Contract context
-    private UUID contractId;
-    private String contractNumber;
-    private String contractType;
-    private String contractStatus;
-    
-    // Property context
-    private UUID propertyId;
-    private String propertyTitle;
-    private String propertyAddress;
-    
-    // Agent context (for salary/bonus)
-    private UUID agentId;
-    private String agentFirstName;
-    private String agentLastName;
-    private String agentEmployeeCode;
+
+    private String paywayPaymentId;
+
+    @Builder
+    @Data
+    public static class PaymentPayerResponse {
+        private UUID id;
+        private String name;
+        private String email;
+        private String phoneNumber;
+    }
 }

@@ -5,10 +5,8 @@ import com.se100.bds.dtos.requests.payment.UpdatePaymentStatusRequest;
 import com.se100.bds.dtos.responses.payment.PaymentDetailResponse;
 import com.se100.bds.dtos.responses.payment.PaymentListItem;
 import com.se100.bds.exceptions.NotFoundException;
-import com.se100.bds.models.entities.contract.Contract;
 import com.se100.bds.models.entities.contract.Payment;
 import com.se100.bds.models.entities.property.Property;
-import com.se100.bds.models.entities.user.SaleAgent;
 import com.se100.bds.repositories.domains.contract.PaymentRepository;
 import com.se100.bds.services.payment.PaymentGatewayService;
 import com.se100.bds.services.payment.dto.CreatePaymentSessionRequest;
@@ -21,6 +19,7 @@ import com.se100.bds.utils.Constants.PaymentTypeEnum;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -70,6 +69,17 @@ public class PaymentServiceImpl implements PaymentService {
         return payments.map(this::mapToListItem);
     }
 
+    // get payments of property
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PaymentListItem> getPaymentsOfProperty(
+            Pageable pageable,
+            @NotNull UUID propertyId
+    ) {
+        Page<Payment> payments = paymentRepository.findAllByProperty_Id(propertyId, pageable);
+        return payments.map(this::mapToListItem);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public PaymentDetailResponse getPaymentById(UUID paymentId) {
@@ -84,6 +94,7 @@ public class PaymentServiceImpl implements PaymentService {
         var feeToPay = property.getServiceFeeAmount().subtract(property.getServiceFeeCollectedAmount());
         Payment payment = Payment.builder()
             .property(property)
+            .payer(property.getOwner().getUser())
             .paymentType(PaymentTypeEnum.SERVICE_FEE)
             .amount(feeToPay)
             .dueDate(LocalDate.now().plusDays(7)) // is due in 7 days
@@ -91,23 +102,28 @@ public class PaymentServiceImpl implements PaymentService {
             .paymentMethod(PAYOS_METHOD)
             .build();
 
+        var savedPayment = paymentRepository.save(payment);
+
         var rq = CreatePaymentSessionRequest.builder()
             .metadata(Map.of(
                 "paymentType", Constants.PaymentTypeEnum.SERVICE_FEE,
-                "propertyId", property.getId().toString(),
-                "paymentId", payment.getId().toString()
+                "propertyId", savedPayment.getId().toString(),
+                "paymentId", savedPayment.getId().toString()
             ))
-            .amount(payment.getAmount())
+            .amount(savedPayment.getAmount())
             .currency("VND")
             .description("Service fee payment for property: " + property.getTitle())
             .build();
 
-        paymentGatewayService.createPaymentSession(rq, "");
+        var paymentSession = paymentGatewayService.createPaymentSession(rq, "");
 
-        Payment saved = paymentRepository.save(payment);
-        log.info("Created service fee payment {} for property {}", saved.getId(), property.getId());
+        savedPayment.setPaywayPaymentId(paymentSession.getId());
 
-        return mapToDetailResponse(saved);
+        var finalPayment = paymentRepository.save(savedPayment);
+
+        log.info("Created service fee payment {} for property {}", finalPayment.getId(), property.getId());
+
+        return mapToDetailResponse(finalPayment);
     }
 
     @Override
@@ -253,8 +269,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentDetailResponse.PaymentDetailResponseBuilder builder = PaymentDetailResponse.builder()
                 .id(payment.getId())
+                .payer(payerResponse)
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
+                .paywayPaymentId(payment.getPaywayPaymentId())
                 .paymentType(payment.getPaymentType() != null ? payment.getPaymentType().name() : null)
                 .status(payment.getStatus() != null ? payment.getStatus().name() : null)
                 .amount(payment.getAmount())

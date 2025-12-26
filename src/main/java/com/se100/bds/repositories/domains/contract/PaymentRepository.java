@@ -3,6 +3,9 @@ package com.se100.bds.repositories.domains.contract;
 import com.se100.bds.models.entities.contract.Payment;
 import com.se100.bds.utils.Constants.PaymentStatusEnum;
 import com.se100.bds.utils.Constants.PaymentTypeEnum;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -19,4 +22,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
 	Optional<Payment> findFirstByContract_IdAndPaymentTypeOrderByCreatedAtDesc(UUID contractId, PaymentTypeEnum paymentType);
 	Optional<Payment> findFirstByProperty_IdAndPaymentTypeOrderByCreatedAtDesc(UUID propertyId, PaymentTypeEnum paymentType);
 	Optional<Payment> findFirstByContract_IdAndPaymentTypeAndPaymentMethodOrderByCreatedAtDesc(UUID contractId, PaymentTypeEnum paymentType, String paymentMethod);
+
+	@EntityGraph(attributePaths = {"contract", "property"})
+	Page<Payment> findAllByProperty_Id(UUID propertyId, Pageable pageable);
 }
