@@ -39,10 +39,15 @@ public class ServiceFeePaymentSucceededHandler implements PaymentSucceededSideEf
                 currentTime.getMonthValue(), currentTime.getYear());
 
         var property = payment.getProperty();
-        if (property.getServiceFeeCollectedAmount().compareTo(payment.getAmount()) < 0) {
-            property.setServiceFeeCollectedAmount(payment.getAmount());
+        var totalFee = property.getServiceFeeAmount();
+        var collected = property.getServiceFeeCollectedAmount();
+        var newCollected = collected.add(payment.getAmount());
+        if (newCollected.compareTo(collected) > 0) {
+            property.setServiceFeeCollectedAmount(newCollected);
         }
-        property.setStatus(Constants.PropertyStatusEnum.AVAILABLE);
+        if (newCollected.compareTo(totalFee) >= 0) {
+            property.setStatus(Constants.PropertyStatusEnum.AVAILABLE);
+        }
         propertyRepository.save(property);
 
         log.info("SERVICE_FEE succeeded for paymentId={}, contractId={}, propertyId={}, gatewayEventId={}",
