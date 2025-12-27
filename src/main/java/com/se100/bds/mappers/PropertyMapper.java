@@ -9,6 +9,7 @@ import com.se100.bds.models.entities.property.Property;
 import com.se100.bds.repositories.dtos.DocumentProjection;
 import com.se100.bds.repositories.dtos.MediaProjection;
 import com.se100.bds.repositories.dtos.PropertyDetailsProjection;
+import com.se100.bds.services.domains.ranking.RankingService;
 import com.se100.bds.services.dtos.results.PropertyCard;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +21,12 @@ import java.util.stream.Collectors;
 @Component
 public class PropertyMapper extends BaseMapper {
 
+    private final RankingService rankingService;
+
     @Autowired
-    public PropertyMapper(ModelMapper modelMapper) {
+    public PropertyMapper(ModelMapper modelMapper, RankingService rankingService) {
         super(modelMapper);
+        this.rankingService = rankingService;
     }
 
     @Override
@@ -139,19 +143,18 @@ public class PropertyMapper extends BaseMapper {
         // Custom mapping for Property to PropertyDetails
         modelMapper.typeMap(Property.class, PropertyDetails.class)
                 .addMappings(mapper -> {
+                    // I dont know why this shit doesnt work
+                    mapper.map(Property::getCreatedAt, PropertyDetails::setCreatedAt);
+                    mapper.map(Property::getUpdatedAt, PropertyDetails::setUpdatedAt);
+
                     // Map owner
                     mapper.using(ctx -> {
                         Property property = (Property) ctx.getSource();
                         if (property.getOwner() != null && property.getOwner().getUser() != null) {
                             var user = property.getOwner().getUser();
-                            return SimpleUserResponse.builder()
-                                    .id(user.getId())
-                                    .firstName(user.getFirstName())
-                                    .lastName(user.getLastName())
-                                    .phoneNumber(user.getPhoneNumber())
-                                    .createdAt(user.getCreatedAt())
-                                    .updatedAt(user.getUpdatedAt())
-                                    .build();
+                            SimpleUserResponse simpleUserResponse = modelMapper.map(user, SimpleUserResponse.class);
+                            simpleUserResponse.setTier(rankingService.getCurrentTier(user.getId(), user.getRole()));
+                            return simpleUserResponse;
                         }
                         return null;
                     }).map(src -> src, PropertyDetails::setOwner);

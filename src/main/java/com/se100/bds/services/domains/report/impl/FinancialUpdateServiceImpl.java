@@ -70,6 +70,7 @@ public class FinancialUpdateServiceImpl implements FinancialUpdateService {
 
         CompletableFuture.allOf(cityFuture, districtFuture, wardFuture, propertyTypeFuture).join();
 
+        financialReport.setTotalRevenue(financialReport.getTotalRevenue().add(value));
         financialReportRepository.save(financialReport);
     }
 }

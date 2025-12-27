@@ -5,6 +5,8 @@ import com.se100.bds.utils.Constants.PaymentStatusEnum;
 import com.se100.bds.utils.Constants.PaymentTypeEnum;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,9 +16,20 @@ import java.util.UUID;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpecificationExecutor<Payment> {
 	Optional<Payment> findByPaywayPaymentId(String paywayPaymentId);
-	List<Payment> findAllByContract_IdAndStatus(UUID contractId, PaymentStatusEnum status);
-	Optional<Payment> findFirstByContract_IdAndPaymentTypeAndStatus(UUID contractId, PaymentTypeEnum paymentType, PaymentStatusEnum status);
-	Optional<Payment> findFirstByContract_IdAndPaymentTypeOrderByCreatedAtDesc(UUID contractId, PaymentTypeEnum paymentType);
-	Optional<Payment> findFirstByProperty_IdAndPaymentTypeOrderByCreatedAtDesc(UUID propertyId, PaymentTypeEnum paymentType);
-	Optional<Payment> findFirstByContract_IdAndPaymentTypeAndPaymentMethodOrderByCreatedAtDesc(UUID contractId, PaymentTypeEnum paymentType, String paymentMethod);
+
+	@Query("SELECT p FROM Payment p " +
+	       "LEFT JOIN FETCH p.property prop " +
+	       "LEFT JOIN FETCH prop.ward w " +
+	       "LEFT JOIN FETCH w.district d " +
+	       "LEFT JOIN FETCH d.city " +
+	       "LEFT JOIN FETCH prop.propertyType " +
+	       "WHERE YEAR(p.paidDate) = :year AND MONTH(p.paidDate) = :month " +
+	       "AND p.status = :successStatus " +
+	       "AND p.paymentType NOT IN :excludedTypes")
+	List<Payment> findRevenuePaymentsInMonth(
+		@Param("month") int month,
+		@Param("year") int year,
+		@Param("successStatus") PaymentStatusEnum successStatus,
+		@Param("excludedTypes") List<PaymentTypeEnum> excludedTypes
+	);
 }

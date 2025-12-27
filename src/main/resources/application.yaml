@@ -34,7 +34,7 @@ spring:
 #        globally_quoted_identifiers: true
     open-in-view: false
   datasource:
-    url: jdbc:postgresql://${POSTGRESQL_HOST}:${POSTGRESQL_PORT}/${POSTGRESQL_DB}
+    url: jdbc:postgresql://${POSTGRESQL_HOST}:${POSTGRESQL_EXTERNAL_PORT}/${POSTGRESQL_DB}
     username: ${POSTGRESQL_USER}
     password: ${POSTGRESQL_PASSWORD}
   data:

@@ -23,6 +23,7 @@ import com.se100.bds.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -581,6 +582,16 @@ public class ReportServiceImpl implements ReportService {
         return violationStats;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<AgentSalaryItem> getSalaryByMonthYear(int month, int year) {
+        FinancialReport financialReport = financialReportRepository.getFinancialReportByBaseReportData_MonthAndBaseReportData_Year(month, year);
+        if (financialReport == null) {
+            return List.of();
+        }
+        return financialReport.getSaleAgentsSalaryMonth();
+    }
+
 
     @Override
     public DashboardTopStats getDashboardTopStats() {
@@ -664,9 +675,20 @@ public class ReportServiceImpl implements ReportService {
 
         if (year > currentYear) return null;
 
-        // If current year, init to get latest data
+        // If current year, init all months from 1 to current month
         if (year == currentYear) {
-            financialReportScheduler.initFinancialReportData(currentMonth, year).join();
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (int month = 1; month <= currentMonth; month++) {
+                futures.add(financialReportScheduler.initFinancialReportData(month, year));
+            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        } else {
+            // If past year, init all 12 months
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (int month = 1; month <= 12; month++) {
+                futures.add(financialReportScheduler.initFinancialReportData(month, year));
+            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         }
 
         List<FinancialReport> financialReports = financialReportRepository.findAllByBaseReportData_Year(year);
